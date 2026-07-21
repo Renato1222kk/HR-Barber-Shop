@@ -42,12 +42,13 @@ export default function ServicosPage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-zinc-500">
           {services.filter((s) => s.active).length} ativos · {services.length} no total
         </p>
         <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4" /> Novo servico
+          <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo serviço</span>
+          <span className="sm:hidden">Novo</span>
         </Button>
       </div>
 
@@ -58,11 +59,11 @@ export default function ServicosPage() {
       ) : services.length === 0 ? (
         <EmptyState
           icon={Scissors}
-          title="Nenhum servico cadastrado"
-          description="Cadastre os servicos oferecidos na barbearia."
+          title="Nenhum serviço cadastrado"
+          description="Cadastre os serviços oferecidos na barbearia."
           action={
             <Button onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" /> Novo servico
+              <Plus className="h-4 w-4" /> Novo serviço
             </Button>
           }
         />
@@ -118,8 +119,8 @@ export default function ServicosPage() {
       <ServiceModal open={Boolean(editing)} service={editing} onClose={() => setEditing(null)} />
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="Excluir servico?"
-        description={deleting ? `"${deleting.name}" sera removido.` : ''}
+        title="Excluir serviço?"
+        description={deleting ? `"${deleting.name}" será removido.` : ''}
         loading={busy}
         onConfirm={confirmDelete}
         onClose={() => setDeleting(null)}

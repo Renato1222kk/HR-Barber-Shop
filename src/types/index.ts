@@ -1,15 +1,14 @@
-// Tipos centrais do dominio - Bruno Samad Agenda
+// Tipos centrais do dominio - HR Barber Shop
 
 export type AppointmentStatus =
   | 'agendado'
   | 'confirmado'
-  | 'atendido'
-  | 'faltou'
+  | 'em_atendimento'
+  | 'concluido'
   | 'cancelado';
 
 export interface Client {
   id: string;
-  user_id?: string;
   name: string;
   whatsapp: string;
   birth_date: string | null;
@@ -17,9 +16,19 @@ export interface Client {
   created_at: string;
 }
 
+export interface Barber {
+  id: string;
+  name: string;
+  phone: string;
+  specialty: string;
+  active: boolean;
+  work_start: string; // HH:mm
+  work_end: string; // HH:mm
+  created_at: string;
+}
+
 export interface Service {
   id: string;
-  user_id?: string;
   name: string;
   description: string | null;
   duration_minutes: number;
@@ -30,12 +39,13 @@ export interface Service {
 
 export interface Appointment {
   id: string;
-  user_id?: string;
   client_id: string | null;
   service_id: string | null;
+  barber_id: string | null;
   client_name: string;
   client_whatsapp: string;
   service_name: string;
+  barber_name: string;
   date: string; // YYYY-MM-DD
   start_time: string; // HH:mm
   end_time: string; // HH:mm
@@ -69,9 +79,9 @@ export interface RecurringSlot {
 
 export interface RecurringGroup {
   id: string;
-  user_id?: string;
   client_id: string | null;
   service_id: string | null;
+  barber_id: string | null;
   frequency: string;
   interval_weeks: number;
   selected_weekdays: string[];
@@ -85,7 +95,6 @@ export type EditScope = 'one' | 'series';
 
 export interface WorkingHour {
   id: string;
-  user_id?: string;
   weekday: number; // 0 = domingo ... 6 = sabado
   is_open: boolean;
   start_time: string;
@@ -95,10 +104,8 @@ export interface WorkingHour {
 }
 
 export interface Settings {
-  id?: string;
-  user_id?: string;
   business_name: string;
-  barber_name: string;
+  owner_name: string;
   whatsapp: string;
   interval_minutes: number;
   theme: 'dark' | 'gold';
@@ -113,6 +120,7 @@ export interface ClientWithStats extends Client {
 }
 
 // Payloads de criacao/edicao
-export type ClientInput = Omit<Client, 'id' | 'created_at' | 'user_id'>;
-export type ServiceInput = Omit<Service, 'id' | 'created_at' | 'user_id'>;
-export type AppointmentInput = Omit<Appointment, 'id' | 'created_at' | 'user_id'>;
+export type ClientInput = Omit<Client, 'id' | 'created_at'>;
+export type ServiceInput = Omit<Service, 'id' | 'created_at'>;
+export type BarberInput = Omit<Barber, 'id' | 'created_at'>;
+export type AppointmentInput = Omit<Appointment, 'id' | 'created_at'>;

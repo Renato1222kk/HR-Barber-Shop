@@ -65,6 +65,21 @@ export function StatusBadge({ status }: { status: AppointmentStatus }) {
   );
 }
 
+/** Indicacao discreta de que o app roda com dados locais de demonstracao. */
+export function DemoBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-[11px] font-medium text-gold',
+        className
+      )}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-gold" />
+      Modo demonstração
+    </span>
+  );
+}
+
 export function Toggle({
   checked,
   onChange,
@@ -80,17 +95,17 @@ export function Toggle({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="inline-flex items-center gap-2"
+      className="inline-flex shrink-0 items-center gap-2"
     >
       <span
         className={cn(
-          'relative h-6 w-11 rounded-full transition-colors',
+          'relative h-6 w-11 shrink-0 rounded-full transition-colors',
           checked ? 'bg-gold' : 'bg-ink-600'
         )}
       >
         <span
           className={cn(
-            'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
+            'absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
             checked ? 'translate-x-[22px]' : 'translate-x-0.5'
           )}
         />

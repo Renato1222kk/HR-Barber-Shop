@@ -1,6 +1,10 @@
 -- =====================================================================
--- Bruno Samad Agenda - Schema Supabase
--- Rode este arquivo no SQL Editor do Supabase (uma unica vez).
+-- HR Barber Shop - Schema Supabase (ARQUIVO HISTORICO)
+--
+-- Este SQL pertence a versao antiga do app, que usava Supabase.
+-- A versao atual roda 100% em modo demonstracao (localStorage) e NAO
+-- importa nem executa este arquivo. Mantido apenas como documentacao,
+-- caso um backend volte a ser adotado no futuro.
 -- =====================================================================
 
 -- Extensao para gen_random_uuid()
@@ -137,8 +141,8 @@ create index if not exists blocked_times_user_id_idx on public.blocked_times(use
 create table if not exists public.settings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users(id) on delete cascade,
-  business_name text not null default 'Bruno Samad',
-  barber_name text not null default 'Bruno Samad',
+  business_name text not null default 'HR Barber Shop',
+  barber_name text not null default 'HR Barber Shop',
   whatsapp text,
   interval_minutes integer not null default 10,
   theme text not null default 'dark',
@@ -197,11 +201,11 @@ security definer set search_path = public
 as $$
 begin
   insert into public.profiles (id, full_name)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', 'Bruno Samad'))
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', 'HR Barber Shop'))
   on conflict (id) do nothing;
 
   insert into public.settings (user_id, business_name, barber_name)
-  values (new.id, 'Bruno Samad', 'Bruno Samad')
+  values (new.id, 'HR Barber Shop', 'HR Barber Shop')
   on conflict (user_id) do nothing;
 
   -- Horarios padrao: seg-sex 09-19, sab 08-16, dom fechado

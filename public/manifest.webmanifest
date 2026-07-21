@@ -1,7 +1,7 @@
 {
-  "name": "Bruno Samad Agenda",
-  "short_name": "Bruno Agenda",
-  "description": "Gestao de agendamentos, clientes e financeiro da barbearia Bruno Samad.",
+  "name": "HR Barber Shop",
+  "short_name": "HR Barber",
+  "description": "Gestão de agendamentos, clientes e financeiro da HR Barber Shop.",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

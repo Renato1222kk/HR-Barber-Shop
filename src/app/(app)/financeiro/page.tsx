@@ -7,8 +7,9 @@ import {
   TrendingUp,
   Receipt,
   CheckCircle2,
-  XCircle,
+  Clock4,
   Ban,
+  type LucideIcon,
 } from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
 import { listAppointments } from '@/lib/data/repository';
@@ -18,11 +19,7 @@ import { STATUS_META } from '@/lib/constants';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { LoadingState, ErrorState } from '@/components/ui/Misc';
-import {
-  RevenueAreaChart,
-  ServicesBarChart,
-  StatusPieChart,
-} from '@/components/charts/Charts';
+import { RevenueAreaChart, ServicesBarChart, StatusPieChart } from '@/components/charts/Charts';
 
 export default function FinanceiroPage() {
   const { data, loading, error } = useAsync(() => listAppointments(), []);
@@ -44,36 +41,37 @@ export default function FinanceiroPage() {
       {/* Faturamento */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Faturamento do dia" value={formatCurrency(fin.dayRevenue)} icon={Wallet} />
+        <StatCard label="Da semana" value={formatCurrency(fin.weekRevenue)} icon={CalendarRange} />
         <StatCard
-          label="Da semana"
-          value={formatCurrency(fin.weekRevenue)}
-          icon={CalendarRange}
-        />
-        <StatCard
-          label="Do mes"
+          label="Do mês"
           value={formatCurrency(fin.monthRevenue)}
           icon={TrendingUp}
           accent
         />
         <StatCard
-          label="Ticket medio"
+          label="Ticket médio"
           value={formatCurrency(fin.ticketAverage)}
           icon={Receipt}
           hint="por atendimento"
         />
       </div>
 
-      {/* Contadores de status */}
+      {/* Contadores de status (mes) */}
       <div className="grid grid-cols-3 gap-3">
-        <MiniStat icon={CheckCircle2} label="Atendidos" value={fin.attended} tone="text-green-400" />
-        <MiniStat icon={XCircle} label="Faltas" value={fin.noShows} tone="text-red-400" />
+        <MiniStat
+          icon={CheckCircle2}
+          label="Concluídos"
+          value={fin.completed}
+          tone="text-gold"
+        />
+        <MiniStat icon={Clock4} label="Pendentes" value={fin.pending} tone="text-blue-400" />
         <MiniStat icon={Ban} label="Cancelados" value={fin.cancellations} tone="text-zinc-400" />
       </div>
 
       {/* Grafico faturamento por dia */}
       <Card>
         <CardHeader>
-          <CardTitle>Faturamento (ultimos 14 dias)</CardTitle>
+          <CardTitle>Faturamento (últimos 14 dias)</CardTitle>
         </CardHeader>
         <CardContent>
           <RevenueAreaChart data={fin.revenueByDay} />
@@ -81,16 +79,16 @@ export default function FinanceiroPage() {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Servicos mais vendidos */}
+        {/* Servicos mais realizados */}
         <Card>
           <CardHeader>
-            <CardTitle>Servicos mais vendidos</CardTitle>
+            <CardTitle>Serviços mais realizados</CardTitle>
           </CardHeader>
           <CardContent>
             {fin.topServices.length ? (
               <ServicesBarChart data={fin.topServices} />
             ) : (
-              <p className="py-10 text-center text-sm text-zinc-500">Sem dados no mes.</p>
+              <p className="py-10 text-center text-sm text-zinc-500">Sem dados no mês.</p>
             )}
           </CardContent>
         </Card>
@@ -98,7 +96,7 @@ export default function FinanceiroPage() {
         {/* Status dos agendamentos */}
         <Card>
           <CardHeader>
-            <CardTitle>Status dos agendamentos (mes)</CardTitle>
+            <CardTitle>Status dos agendamentos (mês)</CardTitle>
           </CardHeader>
           <CardContent>
             <StatusPieChart data={statusPie} />
@@ -106,7 +104,10 @@ export default function FinanceiroPage() {
               {statusPie
                 .filter((s) => s.value > 0)
                 .map((s) => (
-                  <span key={s.label} className="inline-flex items-center gap-1.5 text-xs text-zinc-400">
+                  <span
+                    key={s.label}
+                    className="inline-flex items-center gap-1.5 text-xs text-zinc-400"
+                  >
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
                     {s.label} ({s.value})
                   </span>
@@ -116,10 +117,44 @@ export default function FinanceiroPage() {
         </Card>
       </div>
 
+      {/* Faturamento por barbeiro */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Faturamento por barbeiro (mês)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {fin.barbers.length ? (
+            <div className="space-y-1.5">
+              {fin.barbers.map((b) => (
+                <div
+                  key={b.name}
+                  className="flex items-center gap-3 rounded-lg bg-ink-900 px-3 py-2.5"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold">
+                    {b.name.charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">{b.name}</p>
+                    <p className="text-xs text-zinc-500">
+                      {b.completed} de {b.total} concluído(s)
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-gold">
+                    {formatCurrency(b.revenue)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="py-10 text-center text-sm text-zinc-500">Sem dados no mês.</p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Clientes que mais gastaram */}
       <Card>
         <CardHeader>
-          <CardTitle>Clientes que mais gastaram (mes)</CardTitle>
+          <CardTitle>Clientes que mais gastaram (mês)</CardTitle>
         </CardHeader>
         <CardContent>
           {fin.topClients.length ? (
@@ -129,19 +164,21 @@ export default function FinanceiroPage() {
                   key={c.name}
                   className="flex items-center gap-3 rounded-lg bg-ink-900 px-3 py-2.5"
                 >
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold">
                     {i + 1}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-white">{c.name}</p>
                     <p className="text-xs text-zinc-500">{c.visits} atendimento(s)</p>
                   </div>
-                  <span className="text-sm font-semibold text-gold">{formatCurrency(c.total)}</span>
+                  <span className="shrink-0 text-sm font-semibold text-gold">
+                    {formatCurrency(c.total)}
+                  </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="py-10 text-center text-sm text-zinc-500">Sem dados no mes.</p>
+            <p className="py-10 text-center text-sm text-zinc-500">Sem dados no mês.</p>
           )}
         </CardContent>
       </Card>
@@ -155,7 +192,7 @@ function MiniStat({
   value,
   tone,
 }: {
-  icon: typeof Wallet;
+  icon: LucideIcon;
   label: string;
   value: number;
   tone: string;

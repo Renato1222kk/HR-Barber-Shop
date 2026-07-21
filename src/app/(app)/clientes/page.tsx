@@ -114,7 +114,7 @@ export default function ClientesPage() {
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
                   <span>{c.appointments_count} atend.</span>
-                  {c.last_visit && <span>Ult. {formatDateShort(c.last_visit)}</span>}
+                  {c.last_visit && <span>Últ. {formatDateShort(c.last_visit)}</span>}
                   {c.top_service && <span className="text-zinc-400">{c.top_service}</span>}
                 </div>
               </div>

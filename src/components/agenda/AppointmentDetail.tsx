@@ -1,15 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { Pencil, Trash2, Clock, Calendar, Scissors, StickyNote, Repeat } from 'lucide-react';
+import {
+  Pencil,
+  Trash2,
+  Clock,
+  Calendar,
+  Scissors,
+  StickyNote,
+  Repeat,
+  UserCog,
+} from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ScopeDialog } from '@/components/ui/ScopeDialog';
+import { ErrorState } from '@/components/ui/Misc';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { cn } from '@/lib/utils/cn';
 import { STATUS_META, STATUS_ORDER } from '@/lib/constants';
 import { formatCurrency, formatDateFull, formatTime } from '@/lib/utils/format';
+import { errorMessage } from '@/lib/utils/error';
 import { confirmationMessage } from '@/lib/utils/whatsapp';
 import {
   deleteAppointment,
@@ -29,6 +40,7 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!a) return null;
 
@@ -37,10 +49,13 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
   const changeStatus = async (status: AppointmentStatus) => {
     if (status === a.status) return;
     setBusy(true);
+    setError(null);
     try {
       await updateAppointment(a.id, { status });
       emitDataChanged();
       onClose();
+    } catch (e) {
+      setError(errorMessage(e, 'Não foi possível alterar o status.'));
     } finally {
       setBusy(false);
     }
@@ -103,8 +118,11 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
             </span>
           </div>
 
+          {error && <ErrorState message={error} />}
+
           <div className="space-y-2.5 rounded-xl bg-ink-900 p-4 text-sm">
             <Row icon={Scissors} label={a.service_name} />
+            {a.barber_name && <Row icon={UserCog} label={a.barber_name} />}
             <Row icon={Calendar} label={formatDateFull(a.date)} />
             <Row
               icon={Clock}
@@ -168,7 +186,7 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
       <ConfirmDialog
         open={confirming}
         title="Excluir agendamento?"
-        description={`O agendamento de ${a.client_name} sera removido.`}
+        description={`O agendamento de ${a.client_name} será removido.`}
         loading={busy}
         onConfirm={handleDelete}
         onClose={() => setConfirming(false)}
@@ -177,9 +195,9 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
       <ScopeDialog
         open={scopeOpen}
         title="O que deseja excluir?"
-        description="Este agendamento faz parte de uma serie recorrente."
+        description="Este agendamento faz parte de uma série recorrente."
         oneLabel="Apenas este agendamento"
-        seriesLabel="Toda a serie"
+        seriesLabel="Toda a série"
         loading={busy}
         onChoose={handleDeleteScope}
         onClose={() => setScopeOpen(false)}

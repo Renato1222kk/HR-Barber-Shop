@@ -1,63 +1,76 @@
-# Bruno Samad Agenda
+# HR Barber Shop
 
-PWA premium de gestao para barbearia: agendamentos, clientes, servicos, financeiro e insights.
-Feito com **Next.js (App Router) + TypeScript + Tailwind + Supabase + Recharts + Lucide**.
+PWA de gestão para barbearia: agendamentos, clientes, barbeiros, serviços, financeiro e insights.
+Feito com **Next.js (App Router) + TypeScript + Tailwind + Recharts + Lucide**.
 
-> O app ja roda **sem configurar nada** usando dados de demonstracao (mock).
-> Ao preencher as variaveis do Supabase, ele passa a usar dados reais automaticamente.
+> **Esta versão roda 100% em modo demonstração.**
+> Não há banco de dados, API externa nem variáveis de ambiente: todos os dados ficam
+> no `localStorage` do navegador e o app já abre com dados fictícios cadastrados.
 
 ---
 
 ## 1. Rodando o projeto
 
 ```bash
-npm install          # instala dependencias
-npm run dev          # ambiente de desenvolvimento  -> http://localhost:3000
+npm install          # instala dependências
+npm run dev          # ambiente de desenvolvimento -> http://localhost:3000
 # ou
-npm run build && npm run start   # producao (PWA/service worker so ativa em producao)
+npm run build && npm run start   # produção (o service worker/PWA só ativa em produção)
 ```
 
-Abra **http://localhost:3000** e clique em **Entrar** (no modo demo qualquer login funciona).
+Abra **http://localhost:3000**. Não é preciso configurar nada.
 
-### Gerar os icones do PWA (ja vem gerados, rode so se quiser regerar)
+### Acesso de demonstração
+
+A tela de login é apenas demonstrativa (nenhuma rota do app fica bloqueada):
+
+| Campo  | Valor                    |
+|--------|--------------------------|
+| E-mail | `admin@hrbarbershop.com` |
+| Senha  | `123456`                 |
+
+Também existe o botão **“Entrar na demonstração”**, que entra direto.
+
+### Gerar os ícones do PWA (já vêm gerados)
+
 ```bash
-node scripts/generate-icons.mjs
+npm run icons
 ```
 
 ---
 
-## 2. Configurar o Supabase (dados reais)
+## 2. Como funciona o armazenamento local
 
-1. Crie um projeto em https://supabase.com.
-2. Em **SQL Editor**, cole e rode todo o arquivo [`supabase/schema.sql`](supabase/schema.sql).
-   Ele cria as tabelas, o RLS por usuario e um trigger que ja semeia servicos/horarios
-   padrao quando um usuario novo se cadastra.
-   > Ja inclui as tabelas de **agendamento recorrente**. Se voce rodou o schema antes
-   > dessa funcionalidade existir, rode tambem [`supabase/migrations/001_recurring.sql`](supabase/migrations/001_recurring.sql).
-3. Em **Authentication > Providers**, mantenha **Email** ativo. Crie seu usuario em
-   **Authentication > Users > Add user** (email + senha) — esse sera o login do barbeiro.
-4. Em **Project Settings > API**, copie a **Project URL** e a **anon public key**.
-5. Crie o arquivo `.env.local` na raiz (copie de `.env.local.example`):
+Toda a camada de dados é local e centralizada — nenhum componente fala direto com o
+`localStorage`:
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
-```
+| Arquivo                        | Papel                                                              |
+|--------------------------------|--------------------------------------------------------------------|
+| `src/lib/data/demo-data.ts`    | dados iniciais (barbeiros, serviços, clientes, agendamentos, horários) |
+| `src/lib/data/demo-storage.ts` | leitura/gravação no `localStorage` + cache em memória + reset       |
+| `src/lib/data/repository.ts`   | CRUD e regras de negócio (a única API usada pelas telas)            |
+| `src/lib/data/analytics.ts`    | métricas derivadas (dashboard, financeiro, insights)                |
 
-6. Reinicie o servidor (`npm run dev`). Pronto: agora o login usa o Supabase Auth e todos
-   os dados sao persistidos com seguranca por usuario (RLS).
+- Chave usada: `hr-barber-shop:demo:v1`.
+- Na primeira abertura os dados iniciais são gerados relativos à data de hoje e gravados.
+- Toda alteração (criar, editar, excluir) é persistida e sobrevive ao recarregar a página.
+- O acesso é sempre protegido por checagem de ambiente, então a renderização no servidor
+  nunca toca o `localStorage` (sem erro de hidratação).
+- Em **Configurações → Dados da demonstração** há o botão
+  **“Restaurar dados de demonstração”**, que pede confirmação antes de apagar as alterações
+  locais e voltar ao estado inicial.
 
 ---
 
 ## 3. Instalar como app no celular (PWA)
 
-> O service worker so e registrado em **producao**. Faca o deploy (ex.: Vercel) ou rode
-> `npm run build && npm run start` e acesse pelo IP da maquina no celular.
+> O service worker só é registrado em **produção**. Faça o deploy (ex.: Vercel) ou rode
+> `npm run build && npm run start` e acesse pelo IP da máquina no celular.
 
-- **Android (Chrome):** abra o site > menu (⋮) > **Adicionar a tela inicial / Instalar app**.
-- **iPhone (Safari):** abra o site > botao **Compartilhar** > **Adicionar a Tela de Inicio**.
+- **Android (Chrome):** menu (⋮) → **Instalar app / Adicionar à tela inicial**.
+- **iPhone (Safari):** botão **Compartilhar** → **Adicionar à Tela de Início**.
 
-O app abre em tela cheia, tema escuro, com icone proprio — com cara de aplicativo nativo.
+O app instala como **HR Barber Shop**, em tela cheia e tema escuro.
 
 ---
 
@@ -67,91 +80,97 @@ O app abre em tela cheia, tema escuro, com icone proprio — com cara de aplicat
 src/
   app/
     layout.tsx              # root (AuthProvider, metadata PWA, fontes)
-    page.tsx                # redireciona p/ login ou dashboard
-    login/page.tsx          # tela de login
-    (app)/                  # area autenticada (sidebar + bottom nav + header)
-      layout.tsx            # gate de autenticacao + AppShell
+    page.tsx                # redireciona para /dashboard
+    login/page.tsx          # tela de login (demonstração)
+    (app)/                  # área do app (sidebar + bottom nav + header)
+      layout.tsx            # AppShell (sem bloqueio de rota)
       dashboard/page.tsx
-      agenda/page.tsx       # views dia / semana / mes
+      agenda/page.tsx       # views dia / semana / mês + filtros
       clientes/page.tsx
+      barbeiros/page.tsx
       servicos/page.tsx
-      financeiro/page.tsx   # graficos Recharts
+      financeiro/page.tsx   # gráficos Recharts
       insights/page.tsx
       configuracoes/page.tsx
   components/
-    ui/                     # Button, Card, Field, Modal, ConfirmDialog, Misc (badges, estados)
-    layout/                 # Sidebar, Header, BottomNav, AppShell, nav
+    brand/                  # Logo e monograma "HR"
+    ui/                     # Button, Card, Field, Modal, ConfirmDialog, Misc
+    layout/                 # Sidebar (recolhível no mobile), Header, BottomNav, AppShell, nav
     dashboard/              # StatCard
     agenda/                 # AppointmentModal, AppointmentCard, AppointmentDetail, RecurrenceSection
     clients/                # ClientModal, ClientDetail
+    barbers/                # BarberModal
     services/               # ServiceModal
-    charts/                 # Charts (area, barras, pizza)
+    charts/                 # Charts (área, barras, pizza)
     WhatsAppButton.tsx
   lib/
-    supabase/client.ts      # cliente Supabase (null se nao configurado)
-    auth/AuthProvider.tsx   # contexto de auth (Supabase ou demo)
-    data/
-      repository.ts         # CRUD unico (Supabase OU store em memoria)
-      analytics.ts          # dashboard, financeiro e insights
-      mock.ts / store.ts    # dados de demonstracao
-    utils/                  # format, whatsapp, cn, recurrence (generateRecurringDates / findConflicts)
-    constants.ts            # cores/labels de status, dias da semana
+    auth/AuthProvider.tsx   # sessão local de demonstração
+    data/                   # demo-data, demo-storage, repository, analytics
+    utils/                  # format, whatsapp, cn, error, recurrence
+    constants.ts            # marca, status, dias da semana
     hooks.ts / events.ts    # fetch + refetch reativo
-  types/index.ts            # tipos do dominio
+  types/index.ts            # tipos do domínio
 public/
   manifest.webmanifest      # PWA
   sw.js                     # service worker (offline + cache)
-  icons/                    # icones gerados
-supabase/schema.sql         # banco + RLS + seed
-scripts/generate-icons.mjs  # gerador de icones PNG
+  icons/                    # ícones "HR" gerados
+docs/supabase/              # SQL da versão antiga (documentação, não é usado pelo app)
+scripts/generate-icons.mjs  # gerador de ícones PNG
 ```
 
 ---
 
 ## 5. Funcionalidades
 
-- **Login** elegante com Supabase Auth (e modo demo).
-- **Dashboard**: agendamentos do dia, faturamento previsto, proximo cliente, horarios livres,
-  total de clientes, faturamento do mes e lista da agenda de hoje.
-- **Agenda**: visoes **dia / semana / mes**, criar / editar / excluir / mudar status,
-  cores por status (azul, verde, dourado, vermelho, cinza).
-- **Novo agendamento**: cria o cliente automaticamente se ainda nao existir; auto-preenche
-  duracao/valor pelo servico e calcula o termino.
-- **Agendamento recorrente**: repetir toda semana / a cada 2 semanas / todo mes / personalizado,
-  escolhendo um ou mais dias da semana e terminando em uma data ou apos X ocorrencias.
-  Mostra **previa** antes de salvar, **detecta conflitos** (sem sobrescrever — opcao de criar
-  apenas horarios livres) e, ao editar/excluir, pergunta **"apenas este" ou "toda a serie"**.
-- **Clientes**: busca, CRUD, historico, total gasto, ultimo atendimento, servico mais frequente
-  e botao de "chamar de volta" para clientes sumidos.
-- **Servicos**: CRUD + ativar/desativar.
-- **Financeiro**: faturamento dia/semana/mes, ticket medio, atendidos/faltas/cancelamentos,
-  graficos (faturamento por dia, servicos mais vendidos, status) e ranking de clientes.
-- **Insights** automaticos (melhor dia, horario de pico, servico campeao, faltas, ticket medio,
-  cliente sumido, crescimento vs. mes anterior).
-- **Configuracoes**: dados da barbearia, WhatsApp, intervalo, tema e horario por dia da semana.
-- **WhatsApp**: botoes com mensagem pronta (confirmacao e retorno) via `wa.me`.
-- **PWA** instalavel, responsivo mobile-first, sidebar no desktop e bottom nav no celular.
+- **Dashboard**: agendamentos de hoje, concluídos, pendentes, cancelamentos, faturamento do dia
+  (somente concluídos) e do mês, próximos atendimentos, serviços mais realizados e desempenho
+  por barbeiro — tudo calculado a partir dos dados locais.
+- **Agenda**: visões **dia / semana / mês**, navegação por data, além de filtros por
+  **cliente (busca)**, **barbeiro** e **status**.
+- **Agendamento**: criar, editar, cancelar, excluir, alterar status, escolher cliente, barbeiro,
+  serviço, data, horário e observação. O cliente é criado automaticamente se ainda não existir e
+  duração/valor são preenchidos pelo serviço.
+- **Conflito de horário**: um barbeiro não pode ter dois atendimentos sobrepostos. A validação
+  considera a duração do serviço e exibe
+  *“Este barbeiro já possui um atendimento nesse horário.”*
+- **Agendamento recorrente**: semanal / quinzenal / mensal / personalizado, com prévia,
+  detecção de conflitos (opção de criar apenas os horários livres) e escolha entre
+  **“apenas este”** ou **“toda a série”** ao editar/excluir.
+- **Clientes**: busca, CRUD, histórico de atendimentos, total gasto, última visita e serviço
+  mais frequente.
+- **Barbeiros**: CRUD, ativar/desativar, telefone, especialidade, horário de atendimento e
+  desempenho individual.
+- **Serviços**: CRUD, preço, duração, descrição e ativo/inativo.
+- **Financeiro**: faturamento dia/semana/mês, ticket médio, contadores por status, gráficos e
+  rankings por serviço, por barbeiro e por cliente.
+- **Insights** automáticos (melhor dia, horário de pico, serviço campeão, barbeiro destaque,
+  cancelamentos, ticket médio, cliente sumido, crescimento vs. mês anterior).
+- **WhatsApp**: mensagens prontas de confirmação e retorno via `wa.me`.
+- **Responsivo**: sidebar fixa no desktop, menu lateral recolhível e bottom nav no celular.
 
 ---
 
 ## 6. Status de agendamento
 
-| Status     | Cor      |
-|------------|----------|
-| agendado   | azul     |
-| confirmado | verde    |
-| atendido   | dourado  |
-| faltou     | vermelho |
-| cancelado  | cinza    |
+| Status           | Cor      |
+|------------------|----------|
+| Agendado         | azul     |
+| Confirmado       | verde    |
+| Em atendimento   | roxo     |
+| Concluído        | dourado  |
+| Cancelado        | cinza    |
+
+O faturamento considera **somente** atendimentos concluídos.
 
 ---
 
 ## 7. Scripts
 
-| Comando             | O que faz                          |
-|---------------------|------------------------------------|
-| `npm run dev`       | desenvolvimento (hot reload)       |
-| `npm run build`     | build de producao                  |
-| `npm run start`     | servidor de producao (ativa PWA)   |
-| `npm run lint`      | lint                               |
-| `node scripts/generate-icons.mjs` | regera os icones do PWA |
+| Comando             | O que faz                        |
+|---------------------|----------------------------------|
+| `npm run dev`       | desenvolvimento (hot reload)     |
+| `npm run build`     | build de produção                |
+| `npm run start`     | servidor de produção (ativa PWA) |
+| `npm run lint`      | lint                             |
+| `npm run typecheck` | checagem de tipos (`tsc --noEmit`) |
+| `npm run icons`     | regera os ícones do PWA          |

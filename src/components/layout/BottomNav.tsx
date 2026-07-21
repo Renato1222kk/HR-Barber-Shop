@@ -57,7 +57,7 @@ export function BottomNav({ onNew }: { onNew: () => void }) {
           {/* Item "Mais" - abre bottom sheet */}
           <button
             onClick={() => setMoreOpen(true)}
-            aria-label="Mais opcoes"
+            aria-label="Mais opções"
             aria-expanded={moreOpen}
             className={cn(tabClass, moreActive || moreOpen ? 'text-gold' : 'text-zinc-500')}
           >

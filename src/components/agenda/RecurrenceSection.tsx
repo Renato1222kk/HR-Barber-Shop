@@ -45,14 +45,14 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
       {enabled && (
         <div className="mt-4 space-y-4 animate-fade-in">
           {/* Frequencia */}
-          <Field label="Frequencia">
+          <Field label="Frequência">
             <Select
               value={config.frequency}
               onChange={(e) => onChange({ frequency: e.target.value as RecurrenceConfig['frequency'] })}
             >
               <option value="weekly">Toda semana</option>
               <option value="biweekly">A cada 2 semanas</option>
-              <option value="monthly">Todo mes</option>
+              <option value="monthly">Todo mês</option>
               <option value="custom">Personalizado</option>
             </Select>
           </Field>
@@ -96,9 +96,9 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
             </div>
           )}
 
-          {/* Terminar recorrencia */}
+          {/* Terminar recorrência */}
           <div>
-            <p className="mb-1.5 text-xs font-medium text-zinc-400">Terminar recorrencia</p>
+            <p className="mb-1.5 text-xs font-medium text-zinc-400">Terminar recorrência</p>
             <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
@@ -122,7 +122,7 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
                     : 'border-ink-600 text-zinc-400 hover:text-white'
                 )}
               >
-                Apos X vezes
+                Após X vezes
               </button>
             </div>
 
@@ -136,7 +136,7 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
                   />
                 </Field>
               ) : (
-                <Field label="Quantidade de ocorrencias">
+                <Field label="Quantidade de ocorrências">
                   <Input
                     type="number"
                     min={1}
@@ -163,7 +163,7 @@ function RecurrencePreview({ preview }: { preview: RecurringSlot[] }) {
   if (preview.length === 0) {
     return (
       <div className="rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm text-zinc-500">
-        Selecione os dias e o termino para gerar a previa.
+        Selecione os dias e o término para gerar a prévia.
       </div>
     );
   }
@@ -175,13 +175,13 @@ function RecurrencePreview({ preview }: { preview: RecurringSlot[] }) {
     <div className="rounded-xl border border-gold/25 bg-gold/5 p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-gold">
         <CalendarRange className="h-4 w-4" />
-        Serao criados {preview.length} agendamento(s) recorrente(s).
+        Serão criados {preview.length} agendamento(s) recorrente(s).
       </p>
       <ul className="mt-2.5 space-y-1">
         {first.map((s, i) => (
           <li key={`${s.date}-${i}`} className="flex items-center gap-2 text-sm text-zinc-300">
             <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-            {formatDateFull(s.date)} as {formatTime(s.time)}
+            {formatDateFull(s.date)} às {formatTime(s.time)}
           </li>
         ))}
       </ul>

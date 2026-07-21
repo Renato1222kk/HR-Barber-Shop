@@ -27,12 +27,15 @@ export function useShell(): ShellContextValue {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [newOpen, setNewOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [defaults, setDefaults] = useState<{ date?: string; time?: string }>({});
 
   const openNewAppointment = useCallback((opts?: { date?: string; time?: string }) => {
     setDefaults({ date: opts?.date, time: opts?.time });
     setNewOpen(true);
   }, []);
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   // Registra o service worker (PWA).
   useEffect(() => {
@@ -44,9 +47,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <ShellContext.Provider value={{ openNewAppointment }}>
       <div className="min-h-dvh bg-ink-950">
-        <Sidebar />
+        <Sidebar open={menuOpen} onClose={closeMenu} />
         <div className="lg:pl-64">
-          <Header onNew={() => openNewAppointment()} />
+          <Header onNew={() => openNewAppointment()} onOpenMenu={() => setMenuOpen(true)} />
           <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-5 lg:px-8 lg:pb-12">
             {children}
           </main>

@@ -2,8 +2,9 @@ import type { Appointment, AppointmentStatus, Client } from '@/types';
 import { parseDate, toISODate, timeToMinutes } from '@/lib/utils/format';
 import { WEEKDAYS } from '@/lib/constants';
 
-const REALIZED: AppointmentStatus[] = ['atendido'];
-const PLANNED: AppointmentStatus[] = ['agendado', 'confirmado', 'atendido'];
+// Somente atendimentos concluidos entram no faturamento.
+const REALIZED: AppointmentStatus[] = ['concluido'];
+const PENDING: AppointmentStatus[] = ['agendado', 'confirmado', 'em_atendimento'];
 
 function revenue(appts: Appointment[]): number {
   return appts.reduce((sum, a) => sum + Number(a.price || 0), 0);
@@ -32,16 +33,64 @@ function inWeek(iso: string, ref: Date): boolean {
   return d >= startOfWeek(ref).getTime() && d <= endOfWeek(ref).getTime();
 }
 
+export interface BarberPerformance {
+  name: string;
+  total: number;
+  completed: number;
+  revenue: number;
+}
+
+/** Desempenho por barbeiro em um conjunto de agendamentos. */
+export function buildBarberPerformance(appointments: Appointment[]): BarberPerformance[] {
+  const map = new Map<string, BarberPerformance>();
+  appointments.forEach((a) => {
+    const name = a.barber_name || 'Sem barbeiro';
+    const entry = map.get(name) ?? { name, total: 0, completed: 0, revenue: 0 };
+    entry.total += 1;
+    if (a.status === 'concluido') {
+      entry.completed += 1;
+      entry.revenue += Number(a.price || 0);
+    }
+    map.set(name, entry);
+  });
+  return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue || b.total - a.total);
+}
+
+/** Servicos mais realizados (somente concluidos). */
+export function buildTopServices(
+  appointments: Appointment[],
+  limit = 6
+): { label: string; value: number; revenue: number }[] {
+  const map: Record<string, { value: number; revenue: number }> = {};
+  appointments
+    .filter((a) => REALIZED.includes(a.status))
+    .forEach((a) => {
+      map[a.service_name] = map[a.service_name] || { value: 0, revenue: 0 };
+      map[a.service_name].value += 1;
+      map[a.service_name].revenue += Number(a.price || 0);
+    });
+  return Object.entries(map)
+    .map(([label, v]) => ({ label, ...v }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, limit);
+}
+
 // =====================================================================
 // DASHBOARD
 // =====================================================================
 export interface DashboardSummary {
   todayCount: number;
+  todayCompleted: number;
+  todayPending: number;
+  todayCancelled: number;
+  todayRevenue: number;
   todayExpectedRevenue: number;
-  nextAppointment: Appointment | null;
-  freeSlots: number;
   monthRevenue: number;
+  freeSlots: number;
   todayList: Appointment[];
+  upcoming: Appointment[];
+  topServices: { label: string; value: number; revenue: number }[];
+  barbers: BarberPerformance[];
 }
 
 export function buildDashboard(
@@ -50,39 +99,47 @@ export function buildDashboard(
   opts: { dayStart?: string; dayEnd?: string; avgDuration?: number } = {}
 ): DashboardSummary {
   const todayISO = toISODate(ref);
-  const today = appointments
-    .filter((a) => a.date === todayISO && a.status !== 'cancelado')
+  const todayAll = appointments
+    .filter((a) => a.date === todayISO)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-  const expected = revenue(today.filter((a) => PLANNED.includes(a.status)));
+  const active = todayAll.filter((a) => a.status !== 'cancelado');
+  const completed = todayAll.filter((a) => a.status === 'concluido');
+  const pending = todayAll.filter((a) => PENDING.includes(a.status));
+  const cancelled = todayAll.filter((a) => a.status === 'cancelado');
 
   const nowMin = ref.getHours() * 60 + ref.getMinutes();
-  const next =
-    today.find(
-      (a) =>
-        timeToMinutes(a.start_time) >= nowMin &&
-        (a.status === 'agendado' || a.status === 'confirmado')
-    ) ?? null;
+  const upcoming = todayAll
+    .filter((a) => PENDING.includes(a.status) && timeToMinutes(a.start_time) >= nowMin)
+    .slice(0, 5);
 
-  // estimativa de horarios livres
+  // Estimativa de horarios livres no dia.
   const dayStart = timeToMinutes(opts.dayStart ?? '09:00');
   const dayEnd = timeToMinutes(opts.dayEnd ?? '19:00');
   const avg = opts.avgDuration ?? 40;
   const totalSlots = Math.max(0, Math.floor((dayEnd - dayStart) / avg));
-  const used = today.filter((a) => a.status !== 'cancelado' && a.status !== 'faltou').length;
-  const freeSlots = Math.max(0, totalSlots - used);
+  const freeSlots = Math.max(0, totalSlots - active.length);
 
   const monthRevenue = revenue(
     appointments.filter((a) => inMonth(a.date, ref) && REALIZED.includes(a.status))
   );
 
   return {
-    todayCount: today.length,
-    todayExpectedRevenue: expected,
-    nextAppointment: next,
-    freeSlots,
+    todayCount: todayAll.length,
+    todayCompleted: completed.length,
+    todayPending: pending.length,
+    todayCancelled: cancelled.length,
+    todayRevenue: revenue(completed),
+    todayExpectedRevenue: revenue(active),
     monthRevenue,
-    todayList: today,
+    freeSlots,
+    todayList: active,
+    upcoming,
+    topServices: buildTopServices(
+      appointments.filter((a) => inMonth(a.date, ref)),
+      5
+    ),
+    barbers: buildBarberPerformance(appointments.filter((a) => inMonth(a.date, ref))),
   };
 }
 
@@ -94,20 +151,20 @@ export interface FinanceSummary {
   weekRevenue: number;
   monthRevenue: number;
   ticketAverage: number;
-  attended: number;
-  noShows: number;
+  completed: number;
+  pending: number;
   cancellations: number;
   topServices: { label: string; value: number; revenue: number }[];
   topClients: { name: string; total: number; visits: number }[];
   statusCounts: { status: AppointmentStatus; count: number }[];
   revenueByDay: { label: string; value: number; iso: string }[];
+  barbers: BarberPerformance[];
 }
 
 export function buildFinance(appointments: Appointment[], ref: Date): FinanceSummary {
   const todayISO = toISODate(ref);
-  const realizedMonth = appointments.filter(
-    (a) => inMonth(a.date, ref) && REALIZED.includes(a.status)
-  );
+  const monthAll = appointments.filter((a) => inMonth(a.date, ref));
+  const realizedMonth = monthAll.filter((a) => REALIZED.includes(a.status));
 
   const dayRevenue = revenue(
     appointments.filter((a) => a.date === todayISO && REALIZED.includes(a.status))
@@ -117,23 +174,6 @@ export function buildFinance(appointments: Appointment[], ref: Date): FinanceSum
   );
   const monthRevenue = revenue(realizedMonth);
   const ticketAverage = realizedMonth.length ? monthRevenue / realizedMonth.length : 0;
-
-  const monthAll = appointments.filter((a) => inMonth(a.date, ref));
-  const attended = monthAll.filter((a) => a.status === 'atendido').length;
-  const noShows = monthAll.filter((a) => a.status === 'faltou').length;
-  const cancellations = monthAll.filter((a) => a.status === 'cancelado').length;
-
-  // top servicos (por quantidade + faturamento)
-  const svc: Record<string, { value: number; revenue: number }> = {};
-  realizedMonth.forEach((a) => {
-    svc[a.service_name] = svc[a.service_name] || { value: 0, revenue: 0 };
-    svc[a.service_name].value += 1;
-    svc[a.service_name].revenue += Number(a.price);
-  });
-  const topServices = Object.entries(svc)
-    .map(([label, v]) => ({ label, ...v }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6);
 
   // top clientes
   const cli: Record<string, { total: number; visits: number }> = {};
@@ -148,7 +188,13 @@ export function buildFinance(appointments: Appointment[], ref: Date): FinanceSum
     .slice(0, 5);
 
   // status counts (mes)
-  const statuses: AppointmentStatus[] = ['agendado', 'confirmado', 'atendido', 'faltou', 'cancelado'];
+  const statuses: AppointmentStatus[] = [
+    'agendado',
+    'confirmado',
+    'em_atendimento',
+    'concluido',
+    'cancelado',
+  ];
   const statusCounts = statuses.map((status) => ({
     status,
     count: monthAll.filter((a) => a.status === status).length,
@@ -160,13 +206,12 @@ export function buildFinance(appointments: Appointment[], ref: Date): FinanceSum
     const d = new Date(ref);
     d.setDate(ref.getDate() - i);
     const iso = toISODate(d);
-    const value = revenue(
-      appointments.filter((a) => a.date === iso && REALIZED.includes(a.status))
-    );
     revenueByDay.push({
       iso,
       label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-      value,
+      value: revenue(
+        appointments.filter((a) => a.date === iso && REALIZED.includes(a.status))
+      ),
     });
   }
 
@@ -175,13 +220,14 @@ export function buildFinance(appointments: Appointment[], ref: Date): FinanceSum
     weekRevenue,
     monthRevenue,
     ticketAverage,
-    attended,
-    noShows,
-    cancellations,
-    topServices,
+    completed: realizedMonth.length,
+    pending: monthAll.filter((a) => PENDING.includes(a.status)).length,
+    cancellations: monthAll.filter((a) => a.status === 'cancelado').length,
+    topServices: buildTopServices(monthAll),
     topClients,
     statusCounts,
     revenueByDay,
+    barbers: buildBarberPerformance(monthAll),
   };
 }
 
@@ -205,7 +251,7 @@ export function buildInsights(
   const realizedMonth = realized.filter((a) => inMonth(a.date, ref));
 
   // Melhor dia da semana (por faturamento)
-  const byWeekday = new Array(7).fill(0);
+  const byWeekday = new Array<number>(7).fill(0);
   realized.forEach((a) => {
     byWeekday[parseDate(a.date).getDay()] += Number(a.price);
   });
@@ -215,7 +261,7 @@ export function buildInsights(
       id: 'best-day',
       icon: 'calendar',
       tone: 'gold',
-      title: `Seu melhor dia da semana e ${WEEKDAYS[bestWeekday].toLowerCase()}.`,
+      title: `O melhor dia da semana da barbearia é ${WEEKDAYS[bestWeekday].toLowerCase()}.`,
     });
   }
 
@@ -223,56 +269,55 @@ export function buildInsights(
   const buckets: Record<string, number> = {};
   appointments.forEach((a) => {
     const h = Number(a.start_time.slice(0, 2));
-    const key = `${h}-${h + 1}`;
-    buckets[key] = (buckets[key] || 0) + 1;
+    buckets[String(h)] = (buckets[String(h)] || 0) + 1;
   });
   const topBucket = Object.entries(buckets).sort((a, b) => b[1] - a[1])[0];
   if (topBucket) {
-    const h = Number(topBucket[0].split('-')[0]);
+    const h = Number(topBucket[0]);
     insights.push({
       id: 'peak-hour',
       icon: 'clock',
       tone: 'blue',
-      title: `O horario com mais agendamentos e entre ${h}h e ${h + 3}h.`,
+      title: `O horário com mais agendamentos é entre ${h}h e ${h + 1}h.`,
     });
   }
 
-  // Servico mais vendido
+  // Servico mais realizado
   const svcCount: Record<string, number> = {};
-  realized.forEach((a) => (svcCount[a.service_name] = (svcCount[a.service_name] || 0) + 1));
+  realized.forEach((a) => {
+    svcCount[a.service_name] = (svcCount[a.service_name] || 0) + 1;
+  });
   const topSvc = Object.entries(svcCount).sort((a, b) => b[1] - a[1])[0];
   if (topSvc) {
     insights.push({
       id: 'top-service',
       icon: 'scissors',
       tone: 'gold',
-      title: `Seu servico mais vendido e ${topSvc[0]}.`,
+      title: `O serviço mais realizado é ${topSvc[0]}.`,
     });
   }
 
-  // Servico que mais gera faturamento
-  const svcRevenue: Record<string, number> = {};
-  realized.forEach(
-    (a) => (svcRevenue[a.service_name] = (svcRevenue[a.service_name] || 0) + Number(a.price))
-  );
-  const topRevSvc = Object.entries(svcRevenue).sort((a, b) => b[1] - a[1])[0];
-  if (topRevSvc && topRevSvc[0] !== topSvc?.[0]) {
+  // Barbeiro destaque do mes
+  const perf = buildBarberPerformance(realizedMonth);
+  if (perf[0] && perf[0].completed > 0) {
     insights.push({
-      id: 'top-revenue-service',
+      id: 'top-barber',
       icon: 'trophy',
       tone: 'gold',
-      title: `${topRevSvc[0]} e o servico que mais gera faturamento.`,
+      title: `${perf[0].name} é o destaque do mês com ${perf[0].completed} atendimento(s) concluído(s).`,
     });
   }
 
-  // Faltas no mes
-  const faltas = appointments.filter((a) => inMonth(a.date, ref) && a.status === 'faltou').length;
-  if (faltas > 0) {
+  // Cancelamentos no mes
+  const cancelados = appointments.filter(
+    (a) => inMonth(a.date, ref) && a.status === 'cancelado'
+  ).length;
+  if (cancelados > 0) {
     insights.push({
-      id: 'no-shows',
+      id: 'cancellations',
       icon: 'alert',
       tone: 'red',
-      title: `Voce teve ${faltas} ${faltas === 1 ? 'falta' : 'faltas'} este mes.`,
+      title: `Foram ${cancelados} cancelamento(s) neste mês.`,
     });
   }
 
@@ -283,7 +328,7 @@ export function buildInsights(
       id: 'ticket',
       icon: 'money',
       tone: 'green',
-      title: `Seu ticket medio este mes e ${ticket.toLocaleString('pt-BR', {
+      title: `O ticket médio deste mês é ${ticket.toLocaleString('pt-BR', {
         style: 'currency',
         currency: 'BRL',
       })}.`,
@@ -310,7 +355,7 @@ export function buildInsights(
       id: 'missing-client',
       icon: 'user',
       tone: 'red',
-      title: `O cliente ${missing[0].name} esta ha mais de ${missing[0].days} dias sem voltar.`,
+      title: `${missing[0].name} está há mais de ${missing[0].days} dias sem voltar.`,
     });
   }
 
@@ -326,8 +371,18 @@ export function buildInsights(
       tone: diff >= 0 ? 'green' : 'red',
       title:
         diff >= 0
-          ? `Seu faturamento cresceu ${diff}% em relacao ao mes passado.`
-          : `Seu faturamento caiu ${Math.abs(diff)}% em relacao ao mes passado.`,
+          ? `O faturamento cresceu ${diff}% em relação ao mês passado.`
+          : `O faturamento caiu ${Math.abs(diff)}% em relação ao mês passado.`,
+    });
+  }
+
+  // Base de clientes
+  if (clients.length) {
+    insights.push({
+      id: 'client-base',
+      icon: 'user',
+      tone: 'blue',
+      title: `A barbearia tem ${clients.length} cliente(s) cadastrado(s).`,
     });
   }
 

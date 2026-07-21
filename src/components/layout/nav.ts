@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   CalendarDays,
   Users,
+  UserCog,
   Scissors,
   Wallet,
   Sparkles,
@@ -16,15 +17,21 @@ export interface NavItem {
   description?: string;
 }
 
-// Menu completo (usado na sidebar do desktop).
+// Menu completo (sidebar do desktop e menu recolhivel do mobile).
 export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Resumo do dia' },
   { href: '/agenda', label: 'Agenda', icon: CalendarDays, description: 'Seus agendamentos' },
-  { href: '/clientes', label: 'Clientes', icon: Users, description: 'Cadastro e historico' },
-  { href: '/servicos', label: 'Servicos', icon: Scissors, description: 'Gerencie precos e duracao' },
-  { href: '/financeiro', label: 'Financeiro', icon: Wallet, description: 'Veja faturamento e relatorios' },
-  { href: '/insights', label: 'Insights', icon: Sparkles, description: 'Analises inteligentes do negocio' },
-  { href: '/configuracoes', label: 'Configuracoes', icon: Settings, description: 'Horarios, perfil e preferencias' },
+  { href: '/clientes', label: 'Clientes', icon: Users, description: 'Cadastro e histórico' },
+  { href: '/barbeiros', label: 'Barbeiros', icon: UserCog, description: 'Equipe da barbearia' },
+  { href: '/servicos', label: 'Serviços', icon: Scissors, description: 'Preços e duração' },
+  { href: '/financeiro', label: 'Financeiro', icon: Wallet, description: 'Faturamento e relatórios' },
+  { href: '/insights', label: 'Insights', icon: Sparkles, description: 'Análises do negócio' },
+  {
+    href: '/configuracoes',
+    label: 'Configurações',
+    icon: Settings,
+    description: 'Horários e preferências',
+  },
 ];
 
 const byHref = (href: string): NavItem => NAV_ITEMS.find((i) => i.href === href)!;
@@ -36,6 +43,7 @@ export const MOBILE_RIGHT: NavItem[] = [byHref('/clientes')];
 // Opcoes do menu "Mais" (bottom sheet).
 export const MORE_NAV: NavItem[] = [
   byHref('/financeiro'),
+  byHref('/barbeiros'),
   byHref('/servicos'),
   byHref('/insights'),
   byHref('/configuracoes'),

@@ -34,9 +34,12 @@ export function AppointmentCard({ appointment: a, onClick, compact, showWhatsapp
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-white">{a.client_name}</p>
-        <p className="truncate text-xs text-zinc-400">{a.service_name}</p>
+        <p className="truncate text-xs text-zinc-400">
+          {a.service_name}
+          {a.barber_name && <span className="text-zinc-500"> · {a.barber_name}</span>}
+        </p>
         {!compact && (
-          <div className="mt-1.5 flex items-center gap-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <StatusBadge status={a.status} />
             <span className="inline-flex items-center gap-1 text-[11px] text-zinc-500">
               <Clock className="h-3 w-3" />

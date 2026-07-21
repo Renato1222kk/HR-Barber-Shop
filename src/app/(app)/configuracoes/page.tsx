@@ -1,11 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Save, Building2, User, Phone, Timer, Clock, LogOut, Palette } from 'lucide-react';
+import {
+  Save,
+  Building2,
+  User,
+  Phone,
+  Timer,
+  Clock,
+  LogOut,
+  Palette,
+  RotateCcw,
+  Database,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAsync } from '@/lib/hooks';
 import {
   getSettings,
   listWorkingHours,
+  restoreDemoData,
   updateSettings,
   updateWorkingHour,
 } from '@/lib/data/repository';
@@ -16,11 +29,13 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { LoadingState, ErrorState, Toggle } from '@/components/ui/Misc';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { emitDataChanged } from '@/lib/events';
 import type { Settings, WorkingHour } from '@/types';
 
 export default function ConfiguracoesPage() {
-  const { signOut, isDemo } = useAuth();
+  const router = useRouter();
+  const { signOut } = useAuth();
   const settingsQ = useAsync(() => getSettings(), []);
   const hoursQ = useAsync(() => listWorkingHours(), []);
 
@@ -28,6 +43,8 @@ export default function ConfiguracoesPage() {
   const [hours, setHours] = useState<WorkingHour[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState(false);
 
   useEffect(() => {
     if (settingsQ.data) setSettings(settingsQ.data);
@@ -58,6 +75,22 @@ export default function ConfiguracoesPage() {
     }
   };
 
+  const restore = async () => {
+    setRestoring(true);
+    try {
+      await restoreDemoData();
+      emitDataChanged();
+      setConfirmRestore(false);
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    signOut();
+    router.replace('/login');
+  };
+
   const ordered = [...hours].sort((a, b) => ((a.weekday + 6) % 7) - ((b.weekday + 6) % 7));
 
   return (
@@ -78,17 +111,17 @@ export default function ConfiguracoesPage() {
               />
             </div>
           </Field>
-          <Field label="Nome do barbeiro">
+          <Field label="Responsável">
             <div className="relative">
               <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
               <Input
                 className="pl-10"
-                value={settings.barber_name}
-                onChange={(e) => setS({ barber_name: e.target.value })}
+                value={settings.owner_name}
+                onChange={(e) => setS({ owner_name: e.target.value })}
               />
             </div>
           </Field>
-          <Field label="WhatsApp" hint="Numero usado nas mensagens">
+          <Field label="WhatsApp" hint="Número usado nas mensagens">
             <div className="relative">
               <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
               <Input
@@ -99,7 +132,7 @@ export default function ConfiguracoesPage() {
               />
             </div>
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Intervalo (min)" hint="Entre atendimentos">
               <div className="relative">
                 <Timer className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
@@ -121,7 +154,7 @@ export default function ConfiguracoesPage() {
                   value={settings.theme}
                   onChange={(e) => setS({ theme: e.target.value as Settings['theme'] })}
                 >
-                  <option value="dark">Escuro (padrao)</option>
+                  <option value="dark">Escuro (padrão)</option>
                   <option value="gold">Dourado</option>
                 </Select>
               </div>
@@ -134,7 +167,7 @@ export default function ConfiguracoesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-gold" /> Horario de funcionamento
+            <Clock className="h-4 w-4 text-gold" /> Horário de funcionamento
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -142,7 +175,7 @@ export default function ConfiguracoesPage() {
             <div
               key={h.weekday}
               className={cn(
-                'flex items-center gap-3 rounded-xl border border-ink-700/60 px-3 py-2.5',
+                'flex flex-wrap items-center gap-3 rounded-xl border border-ink-700/60 px-3 py-2.5',
                 !h.is_open && 'opacity-60'
               )}
             >
@@ -152,14 +185,16 @@ export default function ConfiguracoesPage() {
                 <div className="flex flex-1 items-center justify-end gap-2">
                   <Input
                     type="time"
-                    className="h-9 w-28 text-center"
+                    aria-label={`Abertura ${WEEKDAYS[h.weekday]}`}
+                    className="h-10 w-28 text-center"
                     value={h.start_time?.slice(0, 5)}
                     onChange={(e) => setH(h.weekday, { start_time: e.target.value })}
                   />
                   <span className="text-zinc-500">—</span>
                   <Input
                     type="time"
-                    className="h-9 w-28 text-center"
+                    aria-label={`Fechamento ${WEEKDAYS[h.weekday]}`}
+                    className="h-10 w-28 text-center"
                     value={h.end_time?.slice(0, 5)}
                     onChange={(e) => setH(h.weekday, { end_time: e.target.value })}
                   />
@@ -172,23 +207,41 @@ export default function ConfiguracoesPage() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center gap-3">
-        <Button onClick={save} loading={saving} size="lg" className="flex-1">
-          <Save className="h-4 w-4" />
-          {saved ? 'Salvo!' : 'Salvar alteracoes'}
-        </Button>
-      </div>
+      <Button onClick={save} loading={saving} size="lg" className="w-full">
+        <Save className="h-4 w-4" />
+        {saved ? 'Salvo!' : 'Salvar alterações'}
+      </Button>
 
-      {isDemo && (
-        <p className="rounded-xl bg-gold/10 px-4 py-3 text-center text-xs text-gold">
-          Modo demonstracao: as alteracoes valem ate recarregar a pagina. Configure o Supabase para
-          persistir.
-        </p>
-      )}
+      {/* Dados da demonstracao */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-4 w-4 text-gold" /> Dados da demonstração
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm leading-relaxed text-zinc-400">
+            Os dados desta versão ficam armazenados somente neste navegador.
+          </p>
+          <Button variant="outline" className="w-full" onClick={() => setConfirmRestore(true)}>
+            <RotateCcw className="h-4 w-4" /> Restaurar dados de demonstração
+          </Button>
+        </CardContent>
+      </Card>
 
-      <Button variant="outline" className="w-full" onClick={() => signOut()}>
+      <Button variant="outline" className="w-full" onClick={handleSignOut}>
         <LogOut className="h-4 w-4" /> Sair da conta
       </Button>
+
+      <ConfirmDialog
+        open={confirmRestore}
+        title="Restaurar dados de demonstração?"
+        description="Todas as alterações feitas neste navegador serão apagadas e os dados iniciais voltarão."
+        confirmLabel="Restaurar"
+        loading={restoring}
+        onConfirm={restore}
+        onClose={() => setConfirmRestore(false)}
+      />
     </div>
   );
 }

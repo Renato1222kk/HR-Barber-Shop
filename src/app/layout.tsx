@@ -2,21 +2,28 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth/AuthProvider';
+import { BRAND } from '@/lib/constants';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Bruno Samad Agenda',
-  description: 'Gestao de agendamentos, clientes e financeiro da barbearia Bruno Samad.',
+  title: {
+    default: `${BRAND.name} · Agenda`,
+    template: `%s · ${BRAND.name}`,
+  },
+  description: BRAND.description,
   manifest: '/manifest.webmanifest',
-  applicationName: 'Bruno Samad Agenda',
+  applicationName: BRAND.name,
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Bruno Agenda',
+    title: BRAND.short,
   },
   icons: {
-    icon: '/icons/icon-192.png',
+    icon: [
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
     apple: '/icons/apple-touch-icon.png',
   },
 };

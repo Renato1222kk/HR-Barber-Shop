@@ -2,17 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Scissors, Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '@/lib/auth/AuthProvider';
+import { Mail, Lock, Eye, EyeOff, PlayCircle } from 'lucide-react';
+import { useAuth, DEMO_CREDENTIALS } from '@/lib/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { ErrorState } from '@/components/ui/Misc';
+import { LogoMark } from '@/components/brand/Logo';
+import { BRAND } from '@/lib/constants';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn, user, loading, isDemo } = useAuth();
-  const [email, setEmail] = useState(isDemo ? 'demo@brunosamad.app' : '');
-  const [password, setPassword] = useState(isDemo ? 'demo' : '');
+  const { signIn, signInAsDemo, user, loading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,29 +27,34 @@ export default function LoginPage() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const { error } = await signIn(email, password);
+    const result = await signIn(email, password);
     setSubmitting(false);
-    if (error) {
-      setError(error);
+    if (result.error) {
+      setError(result.error);
       return;
     }
     router.replace('/dashboard');
   };
 
+  const enterDemo = () => {
+    signInAsDemo();
+    router.replace('/dashboard');
+  };
+
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-ink-950 px-5 py-10">
-      {/* brilho de fundo */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-ink-950 px-5 py-10">
+      {/* Brilho de fundo */}
+      <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-gold/10 blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gold text-ink-950 shadow-gold">
-            <Scissors className="h-8 w-8" />
-          </div>
-          <h1 className="text-2xl font-semibold text-white">Bruno Samad</h1>
-          <p className="text-sm text-gold">Agenda</p>
+          <LogoMark size="lg" className="mb-4" />
+          <h1 className="text-2xl font-semibold tracking-tight text-white">{BRAND.initials}</h1>
+          <p className="mt-1 text-xs font-medium uppercase tracking-[0.28em] text-gold">
+            {BRAND.tagline}
+          </p>
         </div>
 
         <form
@@ -98,16 +105,26 @@ export default function LoginPage() {
             Entrar
           </Button>
 
-          {isDemo && (
-            <p className="rounded-xl bg-gold/10 px-3 py-2.5 text-center text-xs leading-snug text-gold">
-              Modo demonstracao ativo. Toque em <strong>Entrar</strong> para explorar o app com
-              dados de exemplo.
-            </p>
-          )}
+          <div className="flex items-center gap-3 pt-1">
+            <span className="h-px flex-1 bg-ink-700" />
+            <span className="text-[11px] uppercase tracking-wider text-zinc-600">ou</span>
+            <span className="h-px flex-1 bg-ink-700" />
+          </div>
+
+          <Button type="button" variant="outline" size="lg" className="w-full" onClick={enterDemo}>
+            <PlayCircle className="h-4 w-4" />
+            Entrar na demonstração
+          </Button>
+
+          <p className="rounded-xl bg-ink-900 px-3 py-2.5 text-center text-[11px] leading-relaxed text-zinc-500">
+            Acesso de demonstração:{' '}
+            <span className="text-zinc-300">{DEMO_CREDENTIALS.email}</span> · senha{' '}
+            <span className="text-zinc-300">{DEMO_CREDENTIALS.password}</span>
+          </p>
         </form>
 
         <p className="mt-6 text-center text-xs text-zinc-600">
-          Bruno Samad Agenda © {new Date().getFullYear()}
+          {BRAND.name} © {new Date().getFullYear()}
         </p>
       </div>
     </div>

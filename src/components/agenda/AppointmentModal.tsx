@@ -11,11 +11,14 @@ import { ScopeDialog } from '@/components/ui/ScopeDialog';
 import { RecurrenceSection } from './RecurrenceSection';
 import { STATUS_ORDER, STATUS_META } from '@/lib/constants';
 import { addMinutes, parseDate, toISODate, formatDateFull, formatTime } from '@/lib/utils/format';
+import { errorMessage } from '@/lib/utils/error';
 import { generateRecurringDates, findConflicts } from '@/lib/utils/recurrence';
 import {
+  BARBER_CONFLICT_MESSAGE,
   createAppointment,
   createRecurringAppointments,
   listAppointments,
+  listBarbers,
   listClients,
   listServices,
   updateAppointment,
@@ -25,6 +28,7 @@ import { emitDataChanged } from '@/lib/events';
 import type {
   Appointment,
   AppointmentInput,
+  Barber,
   Client,
   EditScope,
   RecurrenceConfig,
@@ -43,14 +47,16 @@ interface Props {
 const empty = (date: string, time: string): AppointmentInput => ({
   client_id: null,
   service_id: null,
+  barber_id: null,
   client_name: '',
   client_whatsapp: '',
   service_name: '',
+  barber_name: '',
   date,
   start_time: time,
   end_time: addMinutes(time, 40),
   duration_minutes: 40,
-  price: 40,
+  price: 35,
   status: 'agendado',
   notes: null,
 });
@@ -77,6 +83,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
   );
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [barbers, setBarbers] = useState<Barber[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,10 +102,11 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
     setScopeOpen(false);
     setRecurrenceOn(false);
     setRec(defaultRecurrence);
-    listClients().then(setClients).catch(() => {});
-    listServices().then(setServices).catch(() => {});
+    listClients().then(setClients).catch(() => setClients([]));
+    listServices().then(setServices).catch(() => setServices([]));
+    listBarbers().then(setBarbers).catch(() => setBarbers([]));
     if (appointment) {
-      const { id, created_at, user_id, ...rest } = appointment;
+      const { id, created_at, ...rest } = appointment;
       setForm(rest);
     } else {
       setForm(empty(defaultDate ?? toISODate(new Date()), defaultTime ?? '09:00'));
@@ -108,6 +116,11 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
   const activeServices = useMemo(
     () => services.filter((s) => s.active || s.id === form.service_id),
     [services, form.service_id]
+  );
+
+  const activeBarbers = useMemo(
+    () => barbers.filter((b) => b.active || b.id === form.barber_id),
+    [barbers, form.barber_id]
   );
 
   // Previa da recorrencia (recalcula ao mudar config / data / horario).
@@ -142,6 +155,11 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
     });
   };
 
+  const onSelectBarber = (barberId: string) => {
+    const barber = barbers.find((b) => b.id === barberId);
+    set({ barber_id: barber?.id ?? null, barber_name: barber?.name ?? '' });
+  };
+
   const onSelectClientName = (name: string) => {
     const match = clients.find((c) => c.name.toLowerCase() === name.toLowerCase());
     if (match) {
@@ -174,8 +192,12 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
       setError('Informe o nome do cliente.');
       return false;
     }
-    if (!form.service_name.trim()) {
-      setError('Selecione um servico.');
+    if (!form.service_id) {
+      setError('Selecione um serviço.');
+      return false;
+    }
+    if (!form.barber_id) {
+      setError('Selecione um barbeiro.');
       return false;
     }
     return true;
@@ -188,8 +210,8 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
       await action();
       emitDataChanged();
       onClose();
-    } catch (e: any) {
-      setError(e?.message ?? 'Erro ao salvar agendamento.');
+    } catch (e) {
+      setError(errorMessage(e, 'Erro ao salvar agendamento.'));
     } finally {
       setSaving(false);
     }
@@ -215,17 +237,16 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
 
     // --- Novo agendamento recorrente ---
     if (preview.length === 0) {
-      setError('Configure a recorrencia: nenhuma data foi gerada.');
+      setError('Configure a recorrência: nenhuma data foi gerada.');
       return;
     }
     setSaving(true);
-    setError(null);
     try {
       const existing = await listAppointments({
         from: preview[0].date,
         to: preview[preview.length - 1].date,
       });
-      const conf = findConflicts(preview, form.duration_minutes, existing);
+      const conf = findConflicts(preview, form.duration_minutes, existing, form.barber_id);
       if (conf.length > 0) {
         setConflicts(conf);
         setStep('conflicts');
@@ -235,8 +256,8 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
       await createRecurringAppointments(form, rec, preview);
       emitDataChanged();
       onClose();
-    } catch (e: any) {
-      setError(e?.message ?? 'Erro ao criar agendamentos.');
+    } catch (e) {
+      setError(errorMessage(e, 'Erro ao criar agendamentos.'));
     } finally {
       setSaving(false);
     }
@@ -246,7 +267,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
     const conflictKeys = new Set(conflicts.map((c) => `${c.date}_${c.time}`));
     const free = preview.filter((s) => !conflictKeys.has(`${s.date}_${s.time}`));
     if (free.length === 0) {
-      setError('Nenhum horario livre para criar.');
+      setError('Nenhum horário livre para criar.');
       return;
     }
     await finish(() => createRecurringAppointments(form, rec, free));
@@ -264,8 +285,8 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
       emitDataChanged();
       setScopeOpen(false);
       onClose();
-    } catch (e: any) {
-      setError(e?.message ?? 'Erro ao salvar.');
+    } catch (e) {
+      setError(errorMessage(e, 'Erro ao salvar.'));
     } finally {
       setSaving(false);
     }
@@ -297,7 +318,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
                 onClick={() => setStep('form')}
                 disabled={saving}
               >
-                Cancelar
+                Voltar
               </Button>
               <Button className="flex-1" onClick={createOnlyFree} loading={saving}>
                 Criar apenas livres ({freeCount})
@@ -342,7 +363,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
                   </datalist>
                 </Field>
 
-                <Field label="WhatsApp" hint="Apenas numeros, com DDD">
+                <Field label="WhatsApp" hint="Apenas números, com DDD">
                   <Input
                     inputMode="numeric"
                     placeholder="11988887777"
@@ -353,17 +374,31 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
               </div>
             </FormSection>
 
-            {/* Secao 2 - Servico */}
-            <FormSection title="Servico" divider>
-              <Field label="Servico">
+            {/* Secao 2 - Atendimento */}
+            <FormSection title="Atendimento" divider>
+              <Field label="Serviço">
                 <Select
                   value={form.service_id ?? ''}
                   onChange={(e) => onSelectService(e.target.value)}
                 >
-                  <option value="">Selecione um servico</option>
+                  <option value="">Selecione um serviço</option>
                   {activeServices.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} — {s.duration_minutes} min — R$ {s.price}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+
+              <Field label="Barbeiro">
+                <Select
+                  value={form.barber_id ?? ''}
+                  onChange={(e) => onSelectBarber(e.target.value)}
+                >
+                  <option value="">Selecione um barbeiro</option>
+                  {activeBarbers.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
                     </option>
                   ))}
                 </Select>
@@ -384,7 +419,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
             </FormSection>
 
             {/* Secao 3 - Data e horario */}
-            <FormSection title="Data e horario" divider>
+            <FormSection title="Data e horário" divider>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Data">
                   <Input
@@ -393,7 +428,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
                     onChange={(e) => set({ date: e.target.value })}
                   />
                 </Field>
-                <Field label="Horario">
+                <Field label="Horário">
                   <Input
                     type="time"
                     value={form.start_time}
@@ -401,7 +436,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
                   />
                 </Field>
               </div>
-              <Field label="Termino" hint="Calculado automaticamente">
+              <Field label="Término" hint="Calculado automaticamente">
                 <Input value={form.end_time} disabled />
               </Field>
             </FormSection>
@@ -409,7 +444,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
             {/* Secao 4 - Valores */}
             <FormSection title="Valores" divider>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Duracao (min)">
+                <Field label="Duração (min)">
                   <Input
                     type="number"
                     inputMode="numeric"
@@ -436,11 +471,11 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
 
             {/* Secao 5 - Extras */}
             <FormSection title="Extras" divider>
-              <Field label="Observacao">
+              <Field label="Observação">
                 <Textarea
-                  placeholder="Preferencias, detalhes do corte..."
+                  placeholder="Preferências, detalhes do corte..."
                   value={form.notes ?? ''}
-                  onChange={(e) => set({ notes: e.target.value })}
+                  onChange={(e) => set({ notes: e.target.value || null })}
                 />
               </Field>
 
@@ -457,8 +492,8 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
 
               {isEdit && appointment?.is_recurring && (
                 <p className="rounded-xl bg-gold/10 px-4 py-2.5 text-xs text-gold">
-                  Este agendamento faz parte de uma serie recorrente. Ao salvar, voce escolhe
-                  aplicar so a ele ou a toda a serie.
+                  Este agendamento faz parte de uma série recorrente. Ao salvar, você escolhe
+                  aplicar só a ele ou a toda a série.
                 </p>
               )}
             </FormSection>
@@ -508,11 +543,11 @@ function ConflictView({
       {error && <ErrorState message={error} />}
       <div className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">
         <AlertTriangle className="h-5 w-5 shrink-0" />
-        <p className="text-sm font-medium">Encontramos conflitos em alguns horarios.</p>
+        <p className="text-sm font-medium">{BARBER_CONFLICT_MESSAGE}</p>
       </div>
 
       <p className="text-xs text-zinc-400">
-        Os horarios abaixo ja possuem agendamento e <strong>nao serao sobrescritos</strong>:
+        Os horários abaixo já possuem atendimento e <strong>não serão sobrescritos</strong>:
       </p>
 
       <ul className="max-h-56 space-y-1.5 overflow-y-auto">
@@ -522,15 +557,15 @@ function ConflictView({
             className="flex items-center gap-2.5 rounded-lg bg-ink-900 px-3 py-2.5 text-sm text-zinc-300"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-            {formatDateFull(c.date)} as {formatTime(c.time)}
+            {formatDateFull(c.date)} às {formatTime(c.time)}
           </li>
         ))}
       </ul>
 
       <p className="rounded-xl bg-gold/10 px-4 py-2.5 text-sm text-gold">
         {freeCount > 0
-          ? `${freeCount} horario(s) livre(s) serao criados.`
-          : 'Nenhum horario livre restante.'}
+          ? `${freeCount} horário(s) livre(s) serão criados.`
+          : 'Nenhum horário livre restante.'}
       </p>
     </div>
   );

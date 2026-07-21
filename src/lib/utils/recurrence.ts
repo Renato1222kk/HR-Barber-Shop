@@ -99,18 +99,21 @@ export function generateRecurringDates(params: GenerateParams): RecurringSlot[] 
 
 /**
  * Detecta conflitos: slots cujo intervalo [inicio, fim) se sobrepoe a um
- * agendamento existente no mesmo dia (ignora cancelados).
+ * atendimento ja existente do mesmo barbeiro (ignora cancelados).
  */
 export function findConflicts(
   slots: RecurringSlot[],
   durationMinutes: number,
-  existing: Appointment[]
+  existing: Appointment[],
+  barberId: string | null
 ): RecurringSlot[] {
+  if (!barberId) return [];
   const conflicts: RecurringSlot[] = [];
   for (const slot of slots) {
     const newStart = timeToMinutes(slot.time);
     const newEnd = newStart + durationMinutes;
     const clash = existing.some((a) => {
+      if (a.barber_id !== barberId) return false;
       if (a.date !== slot.date) return false;
       if (a.status === 'cancelado') return false;
       const exStart = timeToMinutes(a.start_time);
@@ -127,7 +130,7 @@ export function describeRecurrence(config: RecurrenceConfig): string {
   const freq: Record<RecurrenceFrequency, string> = {
     weekly: 'Toda semana',
     biweekly: 'A cada 2 semanas',
-    monthly: 'Todo mes',
+    monthly: 'Todo mês',
     custom: `A cada ${config.intervalWeeks} semana(s)`,
   };
   return freq[config.frequency];

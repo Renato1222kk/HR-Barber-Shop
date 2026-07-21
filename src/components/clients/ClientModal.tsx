@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { ErrorState } from '@/components/ui/Misc';
 import { createClient, updateClient } from '@/lib/data/repository';
+import { errorMessage } from '@/lib/utils/error';
 import { emitDataChanged } from '@/lib/events';
 import type { Client, ClientInput } from '@/types';
 
@@ -27,7 +28,7 @@ export function ClientModal({ open, onClose, client }: Props) {
     if (!open) return;
     setError(null);
     if (client) {
-      const { id, created_at, user_id, ...rest } = client;
+      const { id, created_at, ...rest } = client;
       setForm(rest);
     } else {
       setForm(empty);
@@ -37,7 +38,10 @@ export function ClientModal({ open, onClose, client }: Props) {
   const set = (patch: Partial<ClientInput>) => setForm((f) => ({ ...f, ...patch }));
 
   const submit = async () => {
-    if (!form.name.trim()) return setError('Informe o nome do cliente.');
+    if (!form.name.trim()) {
+      setError('Informe o nome do cliente.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -45,8 +49,8 @@ export function ClientModal({ open, onClose, client }: Props) {
       else await createClient(form);
       emitDataChanged();
       onClose();
-    } catch (e: any) {
-      setError(e?.message ?? 'Erro ao salvar cliente.');
+    } catch (e) {
+      setError(errorMessage(e, 'Erro ao salvar cliente.'));
     } finally {
       setSaving(false);
     }
@@ -77,7 +81,7 @@ export function ClientModal({ open, onClose, client }: Props) {
             onChange={(e) => set({ name: e.target.value })}
           />
         </Field>
-        <Field label="WhatsApp" hint="Apenas numeros, com DDD">
+        <Field label="WhatsApp" hint="Apenas números, com DDD">
           <Input
             inputMode="numeric"
             placeholder="11988887777"
@@ -92,9 +96,9 @@ export function ClientModal({ open, onClose, client }: Props) {
             onChange={(e) => set({ birth_date: e.target.value || null })}
           />
         </Field>
-        <Field label="Observacoes">
+        <Field label="Observações">
           <Textarea
-            placeholder="Preferencias, historico, etc."
+            placeholder="Preferências, histórico, etc."
             value={form.notes ?? ''}
             onChange={(e) => set({ notes: e.target.value || null })}
           />

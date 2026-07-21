@@ -6,17 +6,19 @@ import { useRouter } from 'next/navigation';
 import {
   CalendarDays,
   Wallet,
-  UserCheck,
+  CheckCircle2,
   Clock4,
-  Users,
+  Ban,
   TrendingUp,
   CalendarPlus,
   ArrowRight,
+  Scissors,
+  UserCog,
 } from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
-import { listAppointments, listClients, listWorkingHours } from '@/lib/data/repository';
+import { getSettings, listAppointments, listWorkingHours } from '@/lib/data/repository';
 import { buildDashboard } from '@/lib/data/analytics';
-import { formatCurrency, formatTime } from '@/lib/utils/format';
+import { capitalize, formatCurrency } from '@/lib/utils/format';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { AppointmentCard } from '@/components/agenda/AppointmentCard';
@@ -29,41 +31,45 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const appts = useAsync(() => listAppointments(), []);
-  const clients = useAsync(() => listClients(), []);
   const hours = useAsync(() => listWorkingHours(), []);
+  const settings = useAsync(() => getSettings(), []);
 
   const today = new Date();
 
   const summary = useMemo(() => {
     if (!appts.data) return null;
-    const wd = today.getDay();
-    const wh = hours.data?.find((h) => h.weekday === wd);
-    return buildDashboard(appts.data, today, {
+    const wh = hours.data?.find((h) => h.weekday === new Date().getDay());
+    return buildDashboard(appts.data, new Date(), {
       dayStart: wh?.start_time,
       dayEnd: wh?.end_time,
       avgDuration: 40,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appts.data, hours.data]);
 
-  if (appts.loading || clients.loading) return <LoadingState />;
+  if (appts.loading) return <LoadingState />;
   if (appts.error) return <ErrorState message={appts.error} />;
   if (!summary) return null;
 
   const greeting =
     today.getHours() < 12 ? 'Bom dia' : today.getHours() < 18 ? 'Boa tarde' : 'Boa noite';
+  const owner = settings.data?.owner_name?.split(' ')[0] ?? '';
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-sm text-zinc-500">{greeting}, Bruno 👋</p>
+      <div className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm text-zinc-500">
+            {greeting}
+            {owner ? `, ${owner}` : ''} 👋
+          </p>
           <h2 className="text-xl font-semibold text-white">
-            {today.toLocaleDateString('pt-BR', {
-              weekday: 'long',
-              day: '2-digit',
-              month: 'long',
-            })}
+            {capitalize(
+              today.toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+              })
+            )}
           </h2>
         </div>
         <Button onClick={() => openNewAppointment()} className="hidden sm:inline-flex">
@@ -81,58 +87,55 @@ export default function DashboardPage() {
           accent
         />
         <StatCard
-          label="Faturamento previsto"
-          value={formatCurrency(summary.todayExpectedRevenue)}
-          icon={Wallet}
-          hint="hoje"
+          label="Concluídos"
+          value={String(summary.todayCompleted)}
+          hint="atendimentos de hoje"
+          icon={CheckCircle2}
         />
         <StatCard
-          label="Proximo cliente"
-          value={summary.nextAppointment?.client_name ?? '—'}
-          hint={
-            summary.nextAppointment
-              ? `${formatTime(summary.nextAppointment.start_time)} · ${summary.nextAppointment.service_name}`
-              : 'sem proximos hoje'
-          }
-          icon={UserCheck}
-        />
-        <StatCard
-          label="Horarios livres"
-          value={String(summary.freeSlots)}
-          hint="estimativa hoje"
+          label="Pendentes"
+          value={String(summary.todayPending)}
+          hint="aguardando atendimento"
           icon={Clock4}
         />
         <StatCard
-          label="Clientes"
-          value={String(clients.data?.length ?? 0)}
-          hint="cadastrados"
-          icon={Users}
+          label="Cancelamentos"
+          value={String(summary.todayCancelled)}
+          hint="hoje"
+          icon={Ban}
         />
         <StatCard
-          label="Faturamento do mes"
-          value={formatCurrency(summary.monthRevenue)}
-          icon={TrendingUp}
+          label="Faturamento do dia"
+          value={formatCurrency(summary.todayRevenue)}
+          hint={`previsto ${formatCurrency(summary.todayExpectedRevenue)}`}
+          icon={Wallet}
           accent
+        />
+        <StatCard
+          label="Faturamento do mês"
+          value={formatCurrency(summary.monthRevenue)}
+          hint="somente concluídos"
+          icon={TrendingUp}
         />
       </div>
 
-      {/* Proximos agendamentos do dia */}
+      {/* Proximos atendimentos */}
       <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle>Agenda de hoje</CardTitle>
+        <CardHeader className="flex items-center justify-between gap-3">
+          <CardTitle>Próximos atendimentos</CardTitle>
           <Link
             href="/agenda"
-            className="inline-flex items-center gap-1 text-xs font-medium text-gold hover:underline"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-gold hover:underline"
           >
             Ver agenda <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </CardHeader>
         <CardContent>
-          {summary.todayList.length === 0 ? (
+          {summary.upcoming.length === 0 ? (
             <EmptyState
               icon={CalendarDays}
-              title="Nenhum agendamento hoje"
-              description="Aproveite para preencher a agenda ou descansar."
+              title="Nada mais para hoje"
+              description="Aproveite para preencher a agenda dos próximos dias."
               action={
                 <Button onClick={() => openNewAppointment()}>
                   <CalendarPlus className="h-4 w-4" />
@@ -142,7 +145,7 @@ export default function DashboardPage() {
             />
           ) : (
             <div className="space-y-2.5">
-              {summary.todayList.map((a) => (
+              {summary.upcoming.map((a) => (
                 <AppointmentCard
                   key={a.id}
                   appointment={a}
@@ -153,6 +156,76 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Servicos mais realizados */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scissors className="h-4 w-4 text-gold" /> Serviços mais realizados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summary.topServices.length === 0 ? (
+              <p className="py-8 text-center text-sm text-zinc-500">Sem dados no mês.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {summary.topServices.map((s, i) => (
+                  <div
+                    key={s.label}
+                    className="flex items-center gap-3 rounded-lg bg-ink-900 px-3 py-2.5"
+                  >
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold">
+                      {i + 1}
+                    </span>
+                    <p className="min-w-0 flex-1 truncate text-sm text-white">{s.label}</p>
+                    <span className="shrink-0 text-xs text-zinc-500">{s.value}x</span>
+                    <span className="shrink-0 text-sm font-semibold text-gold">
+                      {formatCurrency(s.revenue)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Desempenho por barbeiro */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCog className="h-4 w-4 text-gold" /> Desempenho por barbeiro
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summary.barbers.length === 0 ? (
+              <p className="py-8 text-center text-sm text-zinc-500">Sem dados no mês.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {summary.barbers.map((b) => (
+                  <div
+                    key={b.name}
+                    className="flex items-center gap-3 rounded-lg bg-ink-900 px-3 py-2.5"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold">
+                      {b.name.charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-white">{b.name}</p>
+                      <p className="text-xs text-zinc-500">
+                        {b.completed} de {b.total} concluído(s)
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold text-gold">
+                      {formatCurrency(b.revenue)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

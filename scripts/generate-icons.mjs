@@ -55,25 +55,25 @@ function encodePNG(width, height, rgba) {
   ]);
 }
 
-// ---- Monograma "BS" em bitmap 5x7 ----
+// ---- Monograma "HR" em bitmap 5x7 ----
 const GLYPHS = {
-  B: [
-    '11110',
+  H: [
     '10001',
     '10001',
-    '11110',
+    '10001',
+    '11111',
     '10001',
     '10001',
-    '11110',
+    '10001',
   ],
-  S: [
-    '01111',
-    '10000',
-    '10000',
-    '01110',
-    '00001',
-    '00001',
+  R: [
     '11110',
+    '10001',
+    '10001',
+    '11110',
+    '10100',
+    '10010',
+    '10001',
   ],
 };
 
@@ -128,8 +128,8 @@ function draw(size, { padding = false } = {}) {
     }
   }
 
-  // draw "BS"
-  const word = ['B', 'S'];
+  // draw "HR"
+  const word = ['H', 'R'];
   const cols = 5;
   const rows = 7;
   const gap = 1;
@@ -157,8 +157,9 @@ function draw(size, { padding = false } = {}) {
   return encodePNG(size, size, rgba);
 }
 
+writeFileSync(join(outDir, 'favicon-32.png'), draw(32));
 writeFileSync(join(outDir, 'icon-192.png'), draw(192));
 writeFileSync(join(outDir, 'icon-512.png'), draw(512));
 writeFileSync(join(outDir, 'icon-maskable.png'), draw(512, { padding: true }));
 writeFileSync(join(outDir, 'apple-touch-icon.png'), draw(180));
-console.log('Icones gerados em public/icons/');
+console.log('Icones "HR" gerados em public/icons/');

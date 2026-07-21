@@ -1,21 +1,30 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, CalendarDays, Plus } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
-import { listAppointments } from '@/lib/data/repository';
+import { listAppointments, listBarbers } from '@/lib/data/repository';
 import { cn } from '@/lib/utils/cn';
-import { toISODate, formatCurrency } from '@/lib/utils/format';
-import { WEEKDAYS, WEEKDAYS_SHORT, STATUS_META } from '@/lib/constants';
+import { toISODate, formatCurrency, capitalize } from '@/lib/utils/format';
+import { WEEKDAYS, WEEKDAYS_SHORT, STATUS_META, STATUS_ORDER } from '@/lib/constants';
 import { startOfWeek } from '@/lib/data/analytics';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input, Select } from '@/components/ui/Field';
 import { LoadingState, EmptyState, ErrorState } from '@/components/ui/Misc';
 import { AppointmentCard } from '@/components/agenda/AppointmentCard';
 import { AppointmentDetail } from '@/components/agenda/AppointmentDetail';
 import { AppointmentModal } from '@/components/agenda/AppointmentModal';
 import { useShell } from '@/components/layout/AppShell';
-import type { Appointment } from '@/types';
+import type { Appointment, AppointmentStatus } from '@/types';
 
 type View = 'dia' | 'semana' | 'mes';
 
@@ -26,8 +35,33 @@ export default function AgendaPage() {
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [editing, setEditing] = useState<Appointment | null>(null);
 
+  // Filtros
+  const [query, setQuery] = useState('');
+  const [barberId, setBarberId] = useState('');
+  const [status, setStatus] = useState<AppointmentStatus | ''>('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   const { data, loading, error } = useAsync(() => listAppointments(), []);
-  const appointments = data ?? [];
+  const barbersQ = useAsync(() => listBarbers(), []);
+  const barbers = barbersQ.data ?? [];
+
+  const appointments = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (data ?? []).filter((a) => {
+      if (barberId && a.barber_id !== barberId) return false;
+      if (status && a.status !== status) return false;
+      if (q && !a.client_name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [data, query, barberId, status]);
+
+  const activeFilters = (barberId ? 1 : 0) + (status ? 1 : 0) + (query.trim() ? 1 : 0);
+
+  const clearFilters = () => {
+    setQuery('');
+    setBarberId('');
+    setStatus('');
+  };
 
   const move = (dir: number) => {
     const d = new Date(cursor);
@@ -39,14 +73,16 @@ export default function AgendaPage() {
 
   const label = useMemo(() => {
     if (view === 'dia')
-      return cursor.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+      return capitalize(
+        cursor.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
+      );
     if (view === 'semana') {
       const s = startOfWeek(cursor);
       const e = new Date(s);
       e.setDate(s.getDate() + 6);
       return `${s.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${e.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`;
     }
-    return cursor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return capitalize(cursor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
   }, [view, cursor]);
 
   const openEdit = (a: Appointment) => {
@@ -72,28 +108,100 @@ export default function AgendaPage() {
             </button>
           ))}
         </div>
-        <Button onClick={() => openNewAppointment({ date: toISODate(cursor) })} className="hidden sm:inline-flex">
-          <Plus className="h-4 w-4" />
-          Novo
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFiltersOpen((o) => !o)}
+            aria-expanded={filtersOpen}
+            className={cn(
+              'relative flex h-10 w-10 items-center justify-center rounded-xl border transition-colors',
+              filtersOpen || activeFilters
+                ? 'border-gold/50 bg-gold/10 text-gold'
+                : 'border-ink-700 text-zinc-400 hover:bg-ink-800 hover:text-white'
+            )}
+            aria-label="Filtros"
+          >
+            <SlidersHorizontal className="h-4.5 w-4.5" />
+            {activeFilters > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-semibold text-ink-950">
+                {activeFilters}
+              </span>
+            )}
+          </button>
+          <Button
+            onClick={() => openNewAppointment({ date: toISODate(cursor) })}
+            className="hidden sm:inline-flex"
+          >
+            <Plus className="h-4 w-4" />
+            Novo
+          </Button>
+        </div>
       </div>
+
+      {/* Filtros */}
+      {filtersOpen && (
+        <Card className="space-y-3 p-3.5 animate-fade-in">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <Input
+              placeholder="Pesquisar cliente"
+              className="pl-10"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Select value={barberId} onChange={(e) => setBarberId(e.target.value)}>
+              <option value="">Todos os barbeiros</option>
+              {barbers.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as AppointmentStatus | '')}
+            >
+              <option value="">Todos os status</option>
+              {STATUS_ORDER.map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_META[s].label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {activeFilters > 0 && (
+            <button
+              onClick={clearFilters}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-gold hover:underline"
+            >
+              <X className="h-3.5 w-3.5" /> Limpar filtros
+            </button>
+          )}
+        </Card>
+      )}
 
       {/* Navegacao de periodo */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => move(-1)}
+          aria-label="Período anterior"
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink-700 text-zinc-400 hover:bg-ink-800 hover:text-white"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div className="text-center">
-          <p className="text-sm font-semibold capitalize text-white">{label}</p>
-          <button onClick={() => setCursor(new Date())} className="text-xs text-gold hover:underline">
+        <div className="min-w-0 px-2 text-center">
+          <p className="truncate text-sm font-semibold text-white">{label}</p>
+          <button
+            onClick={() => setCursor(new Date())}
+            className="text-xs text-gold hover:underline"
+          >
             Hoje
           </button>
         </div>
         <button
           onClick={() => move(1)}
+          aria-label="Próximo período"
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink-700 text-zinc-400 hover:bg-ink-800 hover:text-white"
         >
           <ChevronRight className="h-5 w-5" />
@@ -105,15 +213,43 @@ export default function AgendaPage() {
       ) : error ? (
         <ErrorState message={error} />
       ) : view === 'dia' ? (
-        <DayView date={cursor} appointments={appointments} onSelect={setSelected} onNew={() => openNewAppointment({ date: toISODate(cursor) })} />
+        <DayView
+          date={cursor}
+          appointments={appointments}
+          onSelect={setSelected}
+          onNew={() => openNewAppointment({ date: toISODate(cursor) })}
+        />
       ) : view === 'semana' ? (
-        <WeekView date={cursor} appointments={appointments} onSelect={setSelected} onPickDay={(d) => { setCursor(d); setView('dia'); }} />
+        <WeekView
+          date={cursor}
+          appointments={appointments}
+          onSelect={setSelected}
+          onPickDay={(d) => {
+            setCursor(d);
+            setView('dia');
+          }}
+        />
       ) : (
-        <MonthView date={cursor} appointments={appointments} onPickDay={(d) => { setCursor(d); setView('dia'); }} />
+        <MonthView
+          date={cursor}
+          appointments={appointments}
+          onPickDay={(d) => {
+            setCursor(d);
+            setView('dia');
+          }}
+        />
       )}
 
-      <AppointmentDetail appointment={selected} onClose={() => setSelected(null)} onEdit={openEdit} />
-      <AppointmentModal open={Boolean(editing)} appointment={editing} onClose={() => setEditing(null)} />
+      <AppointmentDetail
+        appointment={selected}
+        onClose={() => setSelected(null)}
+        onEdit={openEdit}
+      />
+      <AppointmentModal
+        open={Boolean(editing)}
+        appointment={editing}
+        onClose={() => setEditing(null)}
+      />
     </div>
   );
 }
@@ -136,15 +272,15 @@ function DayView({
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
   const total = list
-    .filter((a) => a.status === 'atendido')
+    .filter((a) => a.status === 'concluido')
     .reduce((s, a) => s + Number(a.price), 0);
 
   if (!list.length) {
     return (
       <EmptyState
         icon={CalendarDays}
-        title="Dia livre"
-        description="Nenhum agendamento para esta data."
+        title="Nenhum agendamento"
+        description="Não há atendimentos para esta data com os filtros atuais."
         action={
           <Button onClick={onNew}>
             <Plus className="h-4 w-4" /> Novo agendamento
@@ -156,10 +292,10 @@ function DayView({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between px-1 text-xs text-zinc-500">
+      <div className="flex items-center justify-between gap-2 px-1 text-xs text-zinc-500">
         <span>{list.length} agendamento(s)</span>
         <span>
-          Realizado: <span className="font-semibold text-gold">{formatCurrency(total)}</span>
+          Concluído: <span className="font-semibold text-gold">{formatCurrency(total)}</span>
         </span>
       </div>
       {list.map((a) => (
@@ -203,7 +339,12 @@ function WeekView({
               onClick={() => onPickDay(d)}
               className="flex w-full items-center justify-between border-b border-ink-700/60 px-4 py-2.5 text-left hover:bg-ink-800"
             >
-              <span className={cn('text-sm font-semibold capitalize', isToday ? 'text-gold' : 'text-white')}>
+              <span
+                className={cn(
+                  'text-sm font-semibold capitalize',
+                  isToday ? 'text-gold' : 'text-white'
+                )}
+              >
                 {WEEKDAYS[d.getDay()]} {d.getDate()}
               </span>
               <span className="text-xs text-zinc-500">{list.length} agend.</span>
@@ -211,7 +352,12 @@ function WeekView({
             {list.length > 0 && (
               <div className="space-y-1.5 p-2.5">
                 {list.map((a) => (
-                  <AppointmentCard key={a.id} appointment={a} compact onClick={() => onSelect(a)} />
+                  <AppointmentCard
+                    key={a.id}
+                    appointment={a}
+                    compact
+                    onClick={() => onSelect(a)}
+                  />
                 ))}
               </div>
             )}
@@ -244,7 +390,7 @@ function MonthView({
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const countByDay = useMemo(() => {
+  const byDay = useMemo(() => {
     const map: Record<string, Appointment[]> = {};
     appointments.forEach((a) => {
       (map[a.date] = map[a.date] || []).push(a);
@@ -253,7 +399,7 @@ function MonthView({
   }, [appointments]);
 
   return (
-    <Card className="p-3">
+    <Card className="p-2 sm:p-3">
       <div className="mb-2 grid grid-cols-7 gap-1 text-center">
         {WEEKDAYS_SHORT.map((w) => (
           <span key={w} className="py-1 text-[11px] font-medium text-zinc-500">
@@ -265,7 +411,7 @@ function MonthView({
         {cells.map((d, i) => {
           if (!d) return <div key={`e${i}`} />;
           const iso = toISODate(d);
-          const list = countByDay[iso] ?? [];
+          const list = byDay[iso] ?? [];
           const isToday = iso === todayISO;
           // ate 3 pontinhos coloridos por status
           const dots = list.slice(0, 3);
@@ -281,7 +427,9 @@ function MonthView({
                 list.length === 0 && 'opacity-60'
               )}
             >
-              <span className={cn('text-xs font-medium', isToday ? 'text-gold' : 'text-zinc-300')}>
+              <span
+                className={cn('text-xs font-medium', isToday ? 'text-gold' : 'text-zinc-300')}
+              >
                 {d.getDate()}
               </span>
               <div className="flex flex-wrap items-center justify-center gap-0.5">
@@ -293,7 +441,9 @@ function MonthView({
                   />
                 ))}
                 {list.length > 3 && (
-                  <span className="text-[9px] leading-none text-zinc-500">+{list.length - 3}</span>
+                  <span className="text-[9px] leading-none text-zinc-500">
+                    +{list.length - 3}
+                  </span>
                 )}
               </div>
             </button>

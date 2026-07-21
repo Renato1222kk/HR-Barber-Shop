@@ -1,5 +1,6 @@
 -- =====================================================================
--- Bruno Samad Agenda - Migracao: agendamento recorrente
+-- HR Barber Shop - Migracao: agendamento recorrente (ARQUIVO HISTORICO)
+-- Pertence a versao antiga com Supabase. Nao e usado pelo app atual.
 -- Rode no SQL Editor do Supabase (apos o schema.sql).
 -- =====================================================================
 

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { ErrorState, Toggle } from '@/components/ui/Misc';
 import { createService, updateService } from '@/lib/data/repository';
+import { errorMessage } from '@/lib/utils/error';
 import { emitDataChanged } from '@/lib/events';
 import type { Service, ServiceInput } from '@/types';
 
@@ -33,7 +34,7 @@ export function ServiceModal({ open, onClose, service }: Props) {
     if (!open) return;
     setError(null);
     if (service) {
-      const { id, created_at, user_id, ...rest } = service;
+      const { id, created_at, ...rest } = service;
       setForm(rest);
     } else {
       setForm(empty);
@@ -43,7 +44,10 @@ export function ServiceModal({ open, onClose, service }: Props) {
   const set = (patch: Partial<ServiceInput>) => setForm((f) => ({ ...f, ...patch }));
 
   const submit = async () => {
-    if (!form.name.trim()) return setError('Informe o nome do servico.');
+    if (!form.name.trim()) {
+      setError('Informe o nome do serviço.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -51,8 +55,8 @@ export function ServiceModal({ open, onClose, service }: Props) {
       else await createService(form);
       emitDataChanged();
       onClose();
-    } catch (e: any) {
-      setError(e?.message ?? 'Erro ao salvar servico.');
+    } catch (e) {
+      setError(errorMessage(e, 'Erro ao salvar serviço.'));
     } finally {
       setSaving(false);
     }
@@ -62,7 +66,7 @@ export function ServiceModal({ open, onClose, service }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? 'Editar servico' : 'Novo servico'}
+      title={isEdit ? 'Editar serviço' : 'Novo serviço'}
       footer={
         <>
           <Button variant="secondary" className="flex-1" onClick={onClose} disabled={saving}>
@@ -76,7 +80,7 @@ export function ServiceModal({ open, onClose, service }: Props) {
     >
       <div className="space-y-4">
         {error && <ErrorState message={error} />}
-        <Field label="Nome do servico">
+        <Field label="Nome do serviço">
           <Input
             placeholder="Ex.: Corte Masculino"
             value={form.name}
@@ -84,7 +88,7 @@ export function ServiceModal({ open, onClose, service }: Props) {
           />
         </Field>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Duracao (min)">
+          <Field label="Duração (min)">
             <Input
               type="number"
               min={5}
@@ -103,15 +107,15 @@ export function ServiceModal({ open, onClose, service }: Props) {
             />
           </Field>
         </div>
-        <Field label="Descricao">
+        <Field label="Descrição">
           <Textarea
-            placeholder="Detalhes do servico (opcional)"
+            placeholder="Detalhes do serviço (opcional)"
             value={form.description ?? ''}
             onChange={(e) => set({ description: e.target.value || null })}
           />
         </Field>
         <div className="flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3">
-          <span className="text-sm text-zinc-300">Servico ativo</span>
+          <span className="text-sm text-zinc-300">Serviço ativo</span>
           <Toggle checked={form.active} onChange={(v) => set({ active: v })} />
         </div>
       </div>

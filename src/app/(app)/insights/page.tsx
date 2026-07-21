@@ -60,8 +60,8 @@ export default function InsightsPage() {
           <Sparkles className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-white">Insights automaticos</h2>
-          <p className="text-xs text-zinc-400">Gerados a partir dos seus agendamentos.</p>
+          <h2 className="text-sm font-semibold text-white">Insights automáticos</h2>
+          <p className="text-xs text-zinc-400">Gerados a partir dos dados da barbearia.</p>
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export default function InsightsPage() {
         <EmptyState
           icon={Sparkles}
           title="Ainda sem insights"
-          description="Registre alguns atendimentos para gerar analises automaticas."
+          description="Registre alguns atendimentos para gerar análises automáticas."
         />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

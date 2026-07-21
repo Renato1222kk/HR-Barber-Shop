@@ -1,7 +1,7 @@
 'use client';
 
 // Bus minimo para avisar paginas que os dados mudaram (refetch).
-const EVENT = 'bruno:data-changed';
+const EVENT = 'hr-barber:data-changed';
 
 export function emitDataChanged() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(EVENT));

@@ -1,5 +1,5 @@
-// Service Worker - Bruno Samad Agenda
-const CACHE = 'bruno-samad-v1';
+// Service Worker - HR Barber Shop
+const CACHE = 'hr-barber-shop-v1';
 const APP_SHELL = ['/', '/dashboard', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -23,7 +23,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  // Nunca cachear chamadas ao Supabase / APIs externas.
+  // Nunca cachear requisicoes para outras origens.
   if (url.origin !== self.location.origin) return;
 
   // Navegacao: network-first com fallback para cache (offline).

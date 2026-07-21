@@ -1,16 +1,17 @@
 {
-  "name": "bruno-samad-agenda",
-  "version": "1.0.0",
+  "name": "hr-barber-shop",
+  "version": "2.0.0",
   "private": true,
-  "description": "Bruno Samad Agenda - PWA de gestao para barbearia",
+  "description": "HR Barber Shop - PWA de gestao para barbearia (modo demonstracao)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
     "lucide-react": "^0.441.0",
     "next": "^14.2.35",
     "react": "^18.3.1",

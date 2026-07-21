@@ -19,9 +19,9 @@ interface ScopeDialogProps {
 export function ScopeDialog({
   open,
   title = 'O que deseja alterar?',
-  description = 'Este agendamento faz parte de uma serie recorrente.',
+  description = 'Este agendamento faz parte de uma série recorrente.',
   oneLabel = 'Apenas este agendamento',
-  seriesLabel = 'Toda a serie',
+  seriesLabel = 'Toda a série',
   loading,
   onChoose,
   onClose,

@@ -1,3 +1,4 @@
+import { BRAND } from '@/lib/constants';
 import { formatDateFull, formatTime } from './format';
 
 // Limpa o numero deixando apenas digitos e garante DDI 55.
@@ -26,17 +27,17 @@ export function confirmationMessage({
   date,
   time,
   service,
-  business = 'Bruno Samad',
+  business = BRAND.name,
 }: ConfirmationParams): string {
   const firstName = name.split(' ')[0];
-  return `Ola ${firstName}, seu horario na ${business} foi confirmado para ${formatDateFull(
+  return `Olá ${firstName}, seu horário na ${business} foi confirmado para ${formatDateFull(
     date
-  )} as ${formatTime(time)}. Servico: ${service}. Qualquer coisa me avise por aqui.`;
+  )} às ${formatTime(time)}. Serviço: ${service}. Qualquer coisa me avise por aqui.`;
 }
 
-export function comebackMessage(name: string, business = 'Bruno Samad'): string {
+export function comebackMessage(name: string, business = BRAND.name): string {
   const firstName = name.split(' ')[0];
-  return `Fala ${firstName}, tudo certo? Ja faz um tempo desde seu ultimo corte. Quer marcar um horario essa semana na ${business}?`;
+  return `Fala ${firstName}, tudo certo? Já faz um tempo desde seu último corte. Quer marcar um horário essa semana na ${business}?`;
 }
 
 // Mascara visual simples para exibir o numero.

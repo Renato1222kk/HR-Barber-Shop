@@ -71,7 +71,7 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
             <Stat label="Atendimentos" value={String(client.appointments_count)} />
             <Stat label="Total gasto" value={formatCurrency(client.total_spent)} accent />
             <Stat
-              label="Ultima visita"
+              label="Última visita"
               value={client.last_visit ? formatDateShort(client.last_visit) : '—'}
             />
           </div>
@@ -79,7 +79,7 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
           <div className="space-y-1.5 rounded-xl bg-ink-900 p-4 text-sm">
             {client.top_service && (
               <div className="flex items-center gap-2.5 text-zinc-300">
-                <Scissors className="h-4 w-4 text-zinc-500" /> Servico frequente:{' '}
+                <Scissors className="h-4 w-4 text-zinc-500" /> Serviço frequente:{' '}
                 <span className="font-medium text-white">{client.top_service}</span>
               </div>
             )}
@@ -96,7 +96,7 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
             <WhatsAppButton
               number={client.whatsapp}
               message={comebackMessage(client.name)}
-              label="Chamar de volta (sem visita ha tempo)"
+              label="Chamar de volta (sem visita há tempo)"
               className="w-full"
             />
           )}
@@ -104,7 +104,7 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
           {/* Historico */}
           <div>
             <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-zinc-400">
-              <History className="h-3.5 w-3.5" /> Historico de atendimentos
+              <History className="h-3.5 w-3.5" /> Histórico de atendimentos
             </p>
             {history.length === 0 ? (
               <p className="rounded-xl bg-ink-900 px-4 py-6 text-center text-sm text-zinc-500">
@@ -119,7 +119,10 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
                   >
                     <div className="min-w-0">
                       <p className="truncate text-white">{a.service_name}</p>
-                      <p className="text-xs text-zinc-500">{formatDateFull(a.date)}</p>
+                      <p className="truncate text-xs text-zinc-500">
+                        {formatDateFull(a.date)}
+                        {a.barber_name && ` · ${a.barber_name}`}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <StatusBadge status={a.status} />
@@ -145,7 +148,7 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
       <ConfirmDialog
         open={confirming}
         title="Excluir cliente?"
-        description={`${client.name} sera removido. Os agendamentos nao serao apagados.`}
+        description={`${client.name} será removido. Os agendamentos não serão apagados.`}
         loading={busy}
         onConfirm={handleDelete}
         onClose={() => setConfirming(false)}

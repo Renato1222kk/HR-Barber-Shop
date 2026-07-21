@@ -1,38 +1,53 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Plus, Scissors } from 'lucide-react';
+import { Menu, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { LogoMark } from '@/components/brand/Logo';
+import { DemoBadge } from '@/components/ui/Misc';
+import { BRAND } from '@/lib/constants';
 import { NAV_ITEMS } from './nav';
 
 const TITLES: Record<string, string> = Object.fromEntries(
   NAV_ITEMS.map((i) => [i.href, i.label])
 );
 
-export function Header({ onNew }: { onNew: () => void }) {
+interface HeaderProps {
+  onNew: () => void;
+  onOpenMenu: () => void;
+}
+
+export function Header({ onNew, onOpenMenu }: HeaderProps) {
   const pathname = usePathname();
   const title =
-    TITLES[pathname] ||
-    NAV_ITEMS.find((i) => pathname.startsWith(i.href))?.label ||
-    'Bruno Samad Agenda';
+    TITLES[pathname] || NAV_ITEMS.find((i) => pathname.startsWith(i.href))?.label || BRAND.name;
 
   return (
     <header className="sticky top-0 z-20 border-b border-ink-800 bg-ink-900/90 backdrop-blur supports-[backdrop-filter]:bg-ink-900/70">
-      <div className="flex h-16 items-center justify-between px-4 lg:px-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold text-ink-950 lg:hidden">
-            <Scissors className="h-4.5 w-4.5" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-white">{title}</h1>
-            <p className="hidden text-xs text-zinc-500 sm:block">Bruno Samad Agenda</p>
+      <div className="flex h-16 items-center justify-between gap-3 px-4 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            onClick={onOpenMenu}
+            aria-label="Abrir menu"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ink-700 text-zinc-300 transition-colors hover:bg-ink-800 hover:text-white lg:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <LogoMark size="sm" className="hidden sm:inline-flex lg:hidden" />
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold text-white">{title}</h1>
+            <p className="hidden truncate text-xs text-zinc-500 sm:block">{BRAND.name}</p>
           </div>
         </div>
 
-        <Button onClick={onNew} className="hidden sm:inline-flex">
-          <Plus className="h-4 w-4" />
-          Novo agendamento
-        </Button>
+        <div className="flex shrink-0 items-center gap-3">
+          <DemoBadge className="hidden md:inline-flex" />
+          <Button onClick={onNew} className="hidden sm:inline-flex">
+            <Plus className="h-4 w-4" />
+            <span className="hidden lg:inline">Novo agendamento</span>
+            <span className="lg:hidden">Novo</span>
+          </Button>
+        </div>
       </div>
     </header>
   );

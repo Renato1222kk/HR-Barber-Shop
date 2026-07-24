@@ -65,21 +65,6 @@ export function StatusBadge({ status }: { status: AppointmentStatus }) {
   );
 }
 
-/** Indicacao discreta de que o app roda com dados locais de demonstracao. */
-export function DemoBadge({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-[11px] font-medium text-gold',
-        className
-      )}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-      Modo demonstração
-    </span>
-  );
-}
-
 export function Toggle({
   checked,
   onChange,

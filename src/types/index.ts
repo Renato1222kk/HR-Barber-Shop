@@ -111,6 +111,23 @@ export interface Settings {
   theme: 'dark' | 'gold';
 }
 
+// ===================== FINANCEIRO =====================
+export type FinancialEntryType = 'income' | 'expense';
+
+export interface FinancialEntry {
+  id: string;
+  appointment_id: string | null;
+  type: FinancialEntryType;
+  category: string | null;
+  description: string | null;
+  amount: number;
+  payment_method: string | null;
+  occurred_at: string; // ISO
+  created_at: string;
+}
+
+export type FinancialEntryInput = Omit<FinancialEntry, 'id' | 'created_at'>;
+
 // Cliente enriquecido para listagens
 export interface ClientWithStats extends Client {
   appointments_count: number;

@@ -1,6 +1,11 @@
+import { AuthGate } from '@/components/auth/AuthGate';
 import { AppShell } from '@/components/layout/AppShell';
 
-// Nenhuma rota e bloqueada: esta versao roda inteiramente em modo demonstracao.
+// Rotas privadas: exigem sessão válida (middleware + AuthGate no cliente).
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <AuthGate>
+      <AppShell>{children}</AppShell>
+    </AuthGate>
+  );
 }

@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils/cn';
 import { NAV_ITEMS } from './nav';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { Logo } from '@/components/brand/Logo';
-import { DemoBadge } from '@/components/ui/Misc';
 
 interface SidebarProps {
   /** Controla o menu recolhivel no mobile. No desktop a sidebar e sempre fixa. */
@@ -27,8 +26,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  const handleSignOut = () => {
-    signOut();
+  const handleSignOut = async () => {
+    await signOut();
     router.replace('/login');
   };
 
@@ -86,7 +85,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </nav>
 
         <div className="space-y-2 border-t border-ink-800 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <DemoBadge className="w-full justify-center" />
           <button
             onClick={handleSignOut}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-ink-800 hover:text-white"

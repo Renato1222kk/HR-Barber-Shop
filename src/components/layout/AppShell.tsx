@@ -12,6 +12,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import { AppointmentModal } from '@/components/agenda/AppointmentModal';
+import { useRealtimeSync } from '@/lib/realtime';
 
 interface ShellContextValue {
   openNewAppointment: (opts?: { date?: string; time?: string }) => void;
@@ -36,6 +37,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  // Sincronização em tempo real (agenda/dashboard/financeiro).
+  useRealtimeSync();
 
   // Registra o service worker (PWA).
   useEffect(() => {

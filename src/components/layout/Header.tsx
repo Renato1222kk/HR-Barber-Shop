@@ -3,8 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { Menu, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { LogoMark } from '@/components/brand/Logo';
-import { DemoBadge } from '@/components/ui/Misc';
+import { LogoImage } from '@/components/brand/Logo';
 import { BRAND } from '@/lib/constants';
 import { NAV_ITEMS } from './nav';
 
@@ -33,7 +32,7 @@ export function Header({ onNew, onOpenMenu }: HeaderProps) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <LogoMark size="sm" className="hidden sm:inline-flex lg:hidden" />
+          <LogoImage size="sm" className="hidden sm:inline-flex lg:hidden" />
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold text-white">{title}</h1>
             <p className="hidden truncate text-xs text-zinc-500 sm:block">{BRAND.name}</p>
@@ -41,7 +40,6 @@ export function Header({ onNew, onOpenMenu }: HeaderProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
-          <DemoBadge className="hidden md:inline-flex" />
           <Button onClick={onNew} className="hidden sm:inline-flex">
             <Plus className="h-4 w-4" />
             <span className="hidden lg:inline">Novo agendamento</span>

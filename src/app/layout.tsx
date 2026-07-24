@@ -6,7 +6,10 @@ import { BRAND } from '@/lib/constants';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: `${BRAND.name} · Agenda`,
     template: `%s · ${BRAND.name}`,
@@ -17,7 +20,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: BRAND.short,
+    title: BRAND.name,
   },
   icons: {
     icon: [
@@ -25,6 +28,20 @@ export const metadata: Metadata = {
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
     apple: '/icons/apple-touch-icon.png',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'pt_BR',
+    siteName: BRAND.name,
+    title: `${BRAND.name} · Agenda`,
+    description: BRAND.description,
+    images: [{ url: '/hr-barber-shop-logo.jpeg', alt: BRAND.name }],
+  },
+  twitter: {
+    card: 'summary',
+    title: `${BRAND.name} · Agenda`,
+    description: BRAND.description,
+    images: ['/hr-barber-shop-logo.jpeg'],
   },
 };
 

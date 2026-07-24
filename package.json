@@ -2,7 +2,7 @@
   "name": "hr-barber-shop",
   "version": "2.0.0",
   "private": true,
-  "description": "HR Barber Shop - PWA de gestao para barbearia (modo demonstracao)",
+  "description": "HR Barber Shop - PWA de gestao para barbearia (Next.js + Supabase)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,6 +12,8 @@
     "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.3",
+    "@supabase/supabase-js": "^2.110.8",
     "lucide-react": "^0.441.0",
     "next": "^14.2.35",
     "react": "^18.3.1",

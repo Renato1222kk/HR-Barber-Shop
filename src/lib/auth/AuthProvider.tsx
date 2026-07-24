@@ -1,5 +1,9 @@
 'use client';
 
+// Autenticação real via Supabase Auth (@supabase/ssr).
+// Cuida de login, logout, persistência/atualização de sessão e recuperação
+// de senha. Se o Supabase não estiver configurado, expõe `configured: false`
+// para que a UI mostre uma mensagem amigável em vez de quebrar.
 import {
   createContext,
   useCallback,
@@ -9,100 +13,138 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import type { User } from '@supabase/supabase-js';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { isSupabaseConfigured } from '@/lib/supabase/env';
 
-// -------------------------------------------------------------------
-// Autenticacao de DEMONSTRACAO.
-// Nao existe servidor nem banco: a sessao e apenas uma marca no
-// localStorage para que a tela de login continue navegavel. Nenhuma rota
-// do app fica bloqueada por falta de sessao.
-// -------------------------------------------------------------------
-
-/** Credenciais de demonstracao aceitas pela tela de login. */
-export const DEMO_CREDENTIALS = {
-  email: 'admin@hrbarbershop.com',
-  password: '123456',
-} as const;
-
-const SESSION_KEY = 'hr-barber-shop:demo:session';
-
-interface AuthUser {
+export interface AuthUser {
   id: string;
   name: string;
   email: string;
 }
 
-const DEMO_USER: AuthUser = {
-  id: 'demo-admin',
-  name: 'Henrique Rocha',
-  email: DEMO_CREDENTIALS.email,
-};
-
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
+  configured: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInAsDemo: () => void;
-  signOut: () => void;
+  signOut: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
+  updatePassword: (password: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function readSession(): AuthUser | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    // Sem marca gravada, a demonstracao ja comeca com a sessao aberta.
-    return window.localStorage.getItem(SESSION_KEY) === 'signed-out' ? null : DEMO_USER;
-  } catch {
-    return DEMO_USER;
-  }
+function toAuthUser(user: User | null): AuthUser | null {
+  if (!user) return null;
+  const meta = user.user_metadata ?? {};
+  const name =
+    (typeof meta.name === 'string' && meta.name) ||
+    (typeof meta.full_name === 'string' && meta.full_name) ||
+    user.email?.split('@')[0] ||
+    'Usuário';
+  return { id: user.id, name, email: user.email ?? '' };
 }
 
-function writeSession(active: boolean): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(SESSION_KEY, active ? 'signed-in' : 'signed-out');
-  } catch {
-    // Storage indisponivel: a sessao vale apenas para esta aba.
-  }
+// Traduz os erros mais comuns do Supabase Auth para português.
+function translateAuthError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+  if (m.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar.';
+  if (m.includes('rate limit') || m.includes('too many'))
+    return 'Muitas tentativas. Aguarde alguns instantes e tente novamente.';
+  if (m.includes('should be at least') || m.includes('password'))
+    return 'A senha precisa ter pelo menos 6 caracteres.';
+  return message;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const configured = isSupabaseConfigured();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Le a sessao apenas no cliente para nao gerar diferenca de hidratacao.
   useEffect(() => {
-    setUser(readSession());
-    setLoading(false);
-  }, []);
+    if (!configured) {
+      setLoading(false);
+      return;
+    }
 
-  const signInAsDemo = useCallback(() => {
-    writeSession(true);
-    setUser(DEMO_USER);
-  }, []);
+    const supabase = getSupabaseBrowserClient();
+    let active = true;
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (!active) return;
+      setUser(toAuthUser(data.user));
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(toAuthUser(session?.user ?? null));
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [configured]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      const emailOk = email.trim().toLowerCase() === DEMO_CREDENTIALS.email;
-      const passwordOk = password === DEMO_CREDENTIALS.password;
-      if (!emailOk || !passwordOk) {
-        return { error: 'E-mail ou senha incorretos.' };
-      }
-      writeSession(true);
-      setUser(DEMO_USER);
-      return { error: null };
+      if (!configured) return { error: 'Supabase não configurado.' };
+      const { error } = await getSupabaseBrowserClient().auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      return { error: error ? translateAuthError(error.message) : null };
     },
-    []
+    [configured]
   );
 
-  const signOut = useCallback(() => {
-    writeSession(false);
+  const signOut = useCallback(async () => {
+    if (!configured) return;
+    await getSupabaseBrowserClient().auth.signOut();
     setUser(null);
-  }, []);
+  }, [configured]);
+
+  const requestPasswordReset = useCallback(
+    async (email: string) => {
+      if (!configured) return { error: 'Supabase não configurado.' };
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/redefinir-senha`
+          : undefined;
+      const { error } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(
+        email.trim(),
+        { redirectTo }
+      );
+      return { error: error ? translateAuthError(error.message) : null };
+    },
+    [configured]
+  );
+
+  const updatePassword = useCallback(
+    async (password: string) => {
+      if (!configured) return { error: 'Supabase não configurado.' };
+      const { error } = await getSupabaseBrowserClient().auth.updateUser({ password });
+      return { error: error ? translateAuthError(error.message) : null };
+    },
+    [configured]
+  );
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signInAsDemo, signOut }),
-    [user, loading, signIn, signInAsDemo, signOut]
+    () => ({
+      user,
+      loading,
+      configured,
+      signIn,
+      signOut,
+      requestPasswordReset,
+      updatePassword,
+    }),
+    [user, loading, configured, signIn, signOut, requestPasswordReset, updatePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

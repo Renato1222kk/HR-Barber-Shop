@@ -25,11 +25,9 @@ export function BottomNav({ onNew }: { onNew: () => void }) {
       <Link
         key={item.href}
         href={item.href}
-        className={cn(tabClass, active ? 'text-gold' : 'text-zinc-500')}
+        className={cn(tabClass, active ? 'text-ink-900' : 'text-ink-500')}
       >
-        <Icon
-          className={cn('h-5 w-5', active && 'drop-shadow-[0_0_6px_rgba(201,162,75,0.5)]')}
-        />
+        <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 2} />
         {item.label}
       </Link>
     );
@@ -37,7 +35,7 @@ export function BottomNav({ onNew }: { onNew: () => void }) {
 
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-800 bg-ink-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
         <div className="relative flex h-16 items-stretch px-2">
           {MOBILE_LEFT.map(renderItem)}
 
@@ -46,7 +44,7 @@ export function BottomNav({ onNew }: { onNew: () => void }) {
             <button
               onClick={onNew}
               aria-label="Novo agendamento"
-              className="-mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-ink-950 shadow-gold ring-4 ring-ink-900 transition-transform active:scale-95"
+              className="-mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-ink-950 text-white shadow-soft ring-4 ring-white transition-transform active:scale-95"
             >
               <Plus className="h-7 w-7" strokeWidth={2.5} />
             </button>
@@ -59,13 +57,11 @@ export function BottomNav({ onNew }: { onNew: () => void }) {
             onClick={() => setMoreOpen(true)}
             aria-label="Mais opções"
             aria-expanded={moreOpen}
-            className={cn(tabClass, moreActive || moreOpen ? 'text-gold' : 'text-zinc-500')}
+            className={cn(tabClass, moreActive || moreOpen ? 'text-ink-900' : 'text-ink-500')}
           >
             <MoreHorizontal
-              className={cn(
-                'h-5 w-5',
-                (moreActive || moreOpen) && 'drop-shadow-[0_0_6px_rgba(201,162,75,0.5)]'
-              )}
+              className="h-5 w-5"
+              strokeWidth={moreActive || moreOpen ? 2.4 : 2}
             />
             Mais
           </button>

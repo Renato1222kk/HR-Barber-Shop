@@ -9,100 +9,168 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useRouter } from 'next/navigation';
+import type { User } from '@supabase/supabase-js';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { describeMissingEnv } from '@/lib/supabase/env';
 
 // -------------------------------------------------------------------
-// Autenticacao de DEMONSTRACAO.
-// Nao existe servidor nem banco: a sessao e apenas uma marca no
-// localStorage para que a tela de login continue navegavel. Nenhuma rota
-// do app fica bloqueada por falta de sessao.
+// Autenticacao real via Supabase Auth.
+// A sessao vive em cookies (@supabase/ssr), entao o middleware consegue
+// proteger as rotas privadas antes mesmo da pagina renderizar.
 // -------------------------------------------------------------------
 
-/** Credenciais de demonstracao aceitas pela tela de login. */
-export const DEMO_CREDENTIALS = {
-  email: 'admin@hrbarbershop.com',
-  password: '123456',
-} as const;
-
-const SESSION_KEY = 'hr-barber-shop:demo:session';
-
-interface AuthUser {
+export interface AuthUser {
   id: string;
   name: string;
   email: string;
 }
 
-const DEMO_USER: AuthUser = {
-  id: 'demo-admin',
-  name: 'Henrique Rocha',
-  email: DEMO_CREDENTIALS.email,
-};
+interface AuthResult {
+  error: string | null;
+}
 
 interface AuthContextValue {
   user: AuthUser | null;
+  /** true ate a sessao inicial ser lida — evita piscar entre login e dashboard. */
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInAsDemo: () => void;
-  signOut: () => void;
+  /** Mensagem de configuracao quando faltam as variaveis do Supabase. */
+  configError: string | null;
+  signIn: (email: string, password: string) => Promise<AuthResult>;
+  signOut: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<AuthResult>;
+  updatePassword: (password: string) => Promise<AuthResult>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function readSession(): AuthUser | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    // Sem marca gravada, a demonstracao ja comeca com a sessao aberta.
-    return window.localStorage.getItem(SESSION_KEY) === 'signed-out' ? null : DEMO_USER;
-  } catch {
-    return DEMO_USER;
-  }
+function toAuthUser(user: User | null): AuthUser | null {
+  if (!user) return null;
+  const metadata = user.user_metadata as { name?: string; full_name?: string } | undefined;
+  const email = user.email ?? '';
+  return {
+    id: user.id,
+    name: metadata?.name || metadata?.full_name || email.split('@')[0] || 'HR Barber Shop',
+    email,
+  };
 }
 
-function writeSession(active: boolean): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(SESSION_KEY, active ? 'signed-in' : 'signed-out');
-  } catch {
-    // Storage indisponivel: a sessao vale apenas para esta aba.
+/** Traduz os erros do Supabase Auth para mensagens diretas em portugues. */
+function translateAuthError(message: string): string {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+  if (normalized.includes('email not confirmed')) {
+    return 'E-mail ainda não confirmado. Verifique sua caixa de entrada.';
   }
+  if (normalized.includes('rate limit') || normalized.includes('too many')) {
+    return 'Muitas tentativas seguidas. Aguarde um minuto e tente de novo.';
+  }
+  if (normalized.includes('should be at least') || normalized.includes('password')) {
+    return 'A senha precisa ter pelo menos 6 caracteres.';
+  }
+  if (normalized.includes('failed to fetch')) {
+    return 'Não foi possível conectar ao servidor. Verifique sua internet.';
+  }
+  return message;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const supabase = getSupabaseBrowserClient();
+  const configError = supabase ? null : describeMissingEnv()?.message ?? null;
+
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Le a sessao apenas no cliente para nao gerar diferenca de hidratacao.
   useEffect(() => {
-    setUser(readSession());
-    setLoading(false);
-  }, []);
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
 
-  const signInAsDemo = useCallback(() => {
-    writeSession(true);
-    setUser(DEMO_USER);
-  }, []);
+    let active = true;
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!active) return;
+        setUser(toAuthUser(data.session?.user ?? null));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(toAuthUser(session?.user ?? null));
+      setLoading(false);
+      // Sincroniza os Server Components com o cookie de sessao novo.
+      router.refresh();
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase, router]);
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
-      const emailOk = email.trim().toLowerCase() === DEMO_CREDENTIALS.email;
-      const passwordOk = password === DEMO_CREDENTIALS.password;
-      if (!emailOk || !passwordOk) {
-        return { error: 'E-mail ou senha incorretos.' };
-      }
-      writeSession(true);
-      setUser(DEMO_USER);
-      return { error: null };
+    async (email: string, password: string): Promise<AuthResult> => {
+      if (!supabase) return { error: configError };
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      return { error: error ? translateAuthError(error.message) : null };
     },
-    []
+    [supabase, configError]
   );
 
-  const signOut = useCallback(() => {
-    writeSession(false);
+  const signOut = useCallback(async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
     setUser(null);
-  }, []);
+    // Descarta as paginas guardadas pelo service worker: o proximo usuario
+    // deste aparelho nao deve reabrir a casca do painel offline.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.controller?.postMessage('clear-pages-cache');
+    }
+  }, [supabase]);
+
+  const requestPasswordReset = useCallback(
+    async (email: string): Promise<AuthResult> => {
+      if (!supabase) return { error: configError };
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        // O link do e-mail cai nesta rota, que troca o código pela sessão
+        // e leva para a tela de nova senha.
+        redirectTo: `${window.location.origin}/auth/callback?next=/redefinir-senha`,
+      });
+      return { error: error ? translateAuthError(error.message) : null };
+    },
+    [supabase, configError]
+  );
+
+  const updatePassword = useCallback(
+    async (password: string): Promise<AuthResult> => {
+      if (!supabase) return { error: configError };
+      const { error } = await supabase.auth.updateUser({ password });
+      return { error: error ? translateAuthError(error.message) : null };
+    },
+    [supabase, configError]
+  );
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signInAsDemo, signOut }),
-    [user, loading, signIn, signInAsDemo, signOut]
+    () => ({
+      user,
+      loading,
+      configError,
+      signIn,
+      signOut,
+      requestPasswordReset,
+      updatePassword,
+    }),
+    [user, loading, configError, signIn, signOut, requestPasswordReset, updatePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

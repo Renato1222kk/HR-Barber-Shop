@@ -5,7 +5,7 @@ import { Pencil, Trash2, Phone, Cake, History, Scissors } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { StatusBadge } from '@/components/ui/Misc';
+import { ErrorState, StatusBadge } from '@/components/ui/Misc';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import {
   formatCurrency,
@@ -14,7 +14,8 @@ import {
   daysSince,
 } from '@/lib/utils/format';
 import { formatWhatsappDisplay, comebackMessage } from '@/lib/utils/whatsapp';
-import { deleteClient } from '@/lib/data/repository';
+import { errorMessage } from '@/lib/utils/error';
+import { removeClient } from '@/services';
 import { emitDataChanged } from '@/lib/events';
 import type { Appointment, ClientWithStats } from '@/types';
 
@@ -28,6 +29,7 @@ interface Props {
 export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!client) return null;
 
@@ -38,11 +40,15 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
 
   const handleDelete = async () => {
     setBusy(true);
+    setError(null);
     try {
-      await deleteClient(client.id);
+      await removeClient(client.id);
       emitDataChanged();
       setConfirming(false);
       onClose();
+    } catch (e) {
+      setError(errorMessage(e, 'Não foi possível excluir o cliente.'));
+      setConfirming(false);
     } finally {
       setBusy(false);
     }
@@ -53,18 +59,20 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
       <Modal open={Boolean(client)} onClose={onClose} title="Cliente" size="lg">
         <div className="space-y-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold/15 text-base font-semibold text-gold">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-100 text-base font-semibold text-ink-700">
               {client.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <h3 className="truncate text-lg font-semibold text-white">{client.name}</h3>
+              <h3 className="truncate text-lg font-semibold text-ink-900">{client.name}</h3>
               {client.whatsapp && (
-                <p className="flex items-center gap-1.5 text-sm text-zinc-400">
+                <p className="flex items-center gap-1.5 text-sm text-ink-600">
                   <Phone className="h-3.5 w-3.5" /> {formatWhatsappDisplay(client.whatsapp)}
                 </p>
               )}
             </div>
           </div>
+
+          {error && <ErrorState message={error} />}
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2.5">
@@ -76,19 +84,19 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
             />
           </div>
 
-          <div className="space-y-1.5 rounded-xl bg-ink-900 p-4 text-sm">
+          <div className="space-y-1.5 rounded-xl border border-ink-200 bg-ink-50 p-4 text-sm">
             {client.top_service && (
-              <div className="flex items-center gap-2.5 text-zinc-300">
-                <Scissors className="h-4 w-4 text-zinc-500" /> Serviço frequente:{' '}
-                <span className="font-medium text-white">{client.top_service}</span>
+              <div className="flex items-center gap-2.5 text-ink-700">
+                <Scissors className="h-4 w-4 text-ink-500" /> Serviço frequente:{' '}
+                <span className="font-medium text-ink-900">{client.top_service}</span>
               </div>
             )}
             {client.birth_date && (
-              <div className="flex items-center gap-2.5 text-zinc-300">
-                <Cake className="h-4 w-4 text-zinc-500" /> {formatDateFull(client.birth_date)}
+              <div className="flex items-center gap-2.5 text-ink-700">
+                <Cake className="h-4 w-4 text-ink-500" /> {formatDateFull(client.birth_date)}
               </div>
             )}
-            {client.notes && <p className="pt-1 text-zinc-400">{client.notes}</p>}
+            {client.notes && <p className="pt-1 text-ink-600">{client.notes}</p>}
           </div>
 
           {/* Botao retorno cliente sumido */}
@@ -103,11 +111,11 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
 
           {/* Historico */}
           <div>
-            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-zinc-400">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-600">
               <History className="h-3.5 w-3.5" /> Histórico de atendimentos
             </p>
             {history.length === 0 ? (
-              <p className="rounded-xl bg-ink-900 px-4 py-6 text-center text-sm text-zinc-500">
+              <p className="rounded-xl border border-dashed border-ink-300 px-4 py-6 text-center text-sm text-ink-500">
                 Sem atendimentos registrados.
               </p>
             ) : (
@@ -115,18 +123,18 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
                 {history.map((a) => (
                   <div
                     key={a.id}
-                    className="flex items-center justify-between rounded-lg bg-ink-900 px-3 py-2.5 text-sm"
+                    className="flex items-center justify-between rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-sm"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-white">{a.service_name}</p>
-                      <p className="truncate text-xs text-zinc-500">
+                      <p className="truncate text-ink-900">{a.service_name}</p>
+                      <p className="truncate text-xs text-ink-500">
                         {formatDateFull(a.date)}
                         {a.barber_name && ` · ${a.barber_name}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <StatusBadge status={a.status} />
-                      <span className="font-medium text-gold">{formatCurrency(a.price)}</span>
+                      <span className="font-medium text-ink-900">{formatCurrency(a.price)}</span>
                     </div>
                   </div>
                 ))}
@@ -159,9 +167,9 @@ export function ClientDetail({ client, appointments, onClose, onEdit }: Props) {
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-xl bg-ink-900 p-3 text-center">
-      <p className={`text-base font-semibold ${accent ? 'text-gold' : 'text-white'}`}>{value}</p>
-      <p className="mt-0.5 text-[11px] text-zinc-500">{label}</p>
+    <div className="rounded-xl border border-ink-200 bg-ink-50 p-3 text-center">
+      <p className={`text-base font-semibold ${accent ? 'text-ink-900' : 'text-ink-700'}`}>{value}</p>
+      <p className="mt-0.5 text-[11px] text-ink-500">{label}</p>
     </div>
   );
 }

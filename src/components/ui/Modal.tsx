@@ -52,31 +52,32 @@ export function Modal({
         fullScreenOnMobile ? 'items-stretch sm:items-center' : 'items-end sm:items-center'
       )}
     >
+      {/* Overlay escuro transparente — escurece o fundo sem esconder o contexto. */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-ink-900/40 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
       <div
         className={cn(
-          'relative z-10 flex w-full flex-col overflow-hidden bg-ink-850 shadow-soft animate-scale-in',
+          'relative z-10 flex w-full flex-col overflow-hidden bg-white shadow-soft ring-1 ring-ink-900/5 animate-scale-in',
           // Forma no mobile
           fullScreenOnMobile
-            ? 'h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90vh] sm:rounded-2xl sm:border sm:border-ink-700'
-            : 'max-h-[92vh] rounded-t-2xl border border-ink-700 sm:max-h-[90vh] sm:rounded-2xl',
+            ? 'h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90vh] sm:rounded-2xl sm:border sm:border-ink-200'
+            : 'max-h-[92vh] rounded-t-2xl border border-ink-200 sm:max-h-[90vh] sm:rounded-2xl',
           size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-md'
         )}
       >
         {title && (
           <div
             className={cn(
-              'flex shrink-0 items-center justify-between border-b border-ink-700 px-5 py-4',
+              'flex shrink-0 items-center justify-between border-b border-ink-200 px-5 py-4',
               fullScreenOnMobile && 'pt-[max(1rem,env(safe-area-inset-top))] sm:pt-4'
             )}
           >
-            <h2 className="text-base font-semibold text-white">{title}</h2>
+            <h2 className="text-base font-semibold text-ink-900">{title}</h2>
             <button
               onClick={onClose}
-              className="-mr-1.5 flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 hover:bg-ink-700 hover:text-white"
+              className="-mr-1.5 flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900"
               aria-label="Fechar"
             >
               <X className="h-5 w-5" />
@@ -98,7 +99,7 @@ export function Modal({
         {footer && (
           <div
             className={cn(
-              'flex shrink-0 gap-3 border-t border-ink-700 bg-ink-850 px-5 py-4',
+              'flex shrink-0 gap-3 border-t border-ink-200 bg-white px-5 py-4',
               'pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4'
             )}
           >

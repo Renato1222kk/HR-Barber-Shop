@@ -26,12 +26,12 @@ export function ConfirmDialog({
   return (
     <Modal open={open} onClose={onClose}>
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500/15 text-red-400">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
           <AlertTriangle className="h-7 w-7" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
-          {description && <p className="mt-1 text-sm text-zinc-400">{description}</p>}
+          <h2 className="text-lg font-semibold text-ink-900">{title}</h2>
+          {description && <p className="mt-1 text-sm text-ink-600">{description}</p>}
         </div>
         <div className="mt-2 flex w-full gap-3">
           <Button variant="secondary" className="flex-1" onClick={onClose} disabled={loading}>

@@ -5,47 +5,53 @@ export const BRAND = {
   short: 'HR Barber',
   initials: 'HR',
   tagline: 'Barber Shop',
-  description: 'Gestão de agendamentos, clientes e financeiro da HR Barber Shop.',
+  description: 'Sistema de gestão e agendamentos da HR Barber Shop.',
+  /** Arte oficial da marca (fica em public/, não no Storage do Supabase). */
+  logo: '/hr-barber-shop-logo.jpeg',
 } as const;
+
+/** Fuso usado em toda a agenda — a barbearia opera em um único horário. */
+export const TIMEZONE = 'America/Sao_Paulo';
 
 export const STATUS_META: Record<
   AppointmentStatus,
   { label: string; color: string; dot: string; badge: string; bar: string }
 > = {
+  // Badges leves: fundo pastel, texto escuro e borda suave — legíveis no branco.
   agendado: {
     label: 'Agendado',
-    color: '#3b82f6',
+    color: '#2563eb',
     dot: 'bg-blue-500',
-    badge: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+    badge: 'bg-blue-50 text-blue-700 border-blue-200',
     bar: 'border-l-blue-500',
   },
   confirmado: {
     label: 'Confirmado',
-    color: '#22c55e',
+    color: '#16a34a',
     dot: 'bg-green-500',
-    badge: 'bg-green-500/15 text-green-400 border-green-500/30',
+    badge: 'bg-green-50 text-green-700 border-green-200',
     bar: 'border-l-green-500',
   },
   em_atendimento: {
     label: 'Em atendimento',
-    color: '#a855f7',
+    color: '#9333ea',
     dot: 'bg-purple-500',
-    badge: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+    badge: 'bg-purple-50 text-purple-700 border-purple-200',
     bar: 'border-l-purple-500',
   },
   concluido: {
     label: 'Concluído',
-    color: '#c9a24b',
+    color: '#c59b3d',
     dot: 'bg-gold',
-    badge: 'bg-gold/15 text-gold border-gold/30',
+    badge: 'bg-gold-50 text-gold-700 border-gold-200',
     bar: 'border-l-gold',
   },
   cancelado: {
     label: 'Cancelado',
     color: '#6b7280',
-    dot: 'bg-gray-500',
-    badge: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
-    bar: 'border-l-gray-500',
+    dot: 'bg-ink-400',
+    badge: 'bg-ink-100 text-ink-600 border-ink-200',
+    bar: 'border-l-ink-400',
   },
 };
 

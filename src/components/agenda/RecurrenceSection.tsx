@@ -28,15 +28,15 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
   };
 
   return (
-    <div className="rounded-2xl border border-ink-700/70 bg-ink-900/60 p-4">
+    <div className="rounded-2xl border border-ink-200 bg-ink-50 p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold/15 text-gold">
-            <Repeat className="h-4.5 w-4.5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-100 text-ink-700">
+            <Repeat className="h-[18px] w-[18px]" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">Agendamento recorrente</p>
-            <p className="text-xs text-zinc-500">Repetir este agendamento</p>
+            <p className="text-sm font-semibold text-ink-900">Agendamento recorrente</p>
+            <p className="text-xs text-ink-500">Repetir este agendamento</p>
           </div>
         </div>
         <Toggle checked={enabled} onChange={onToggle} />
@@ -72,7 +72,7 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
           {/* Dias da semana (oculto no mensal) */}
           {config.frequency !== 'monthly' && (
             <div>
-              <p className="mb-1.5 text-xs font-medium text-zinc-400">Dias da semana</p>
+              <p className="mb-1.5 text-xs font-medium text-ink-600">Dias da semana</p>
               <div className="grid grid-cols-7 gap-1.5">
                 {WEEKDAY_ORDER.map((wd) => {
                   const active = config.selectedWeekdays.includes(wd);
@@ -84,8 +84,8 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
                       className={cn(
                         'flex h-11 items-center justify-center rounded-lg border text-xs font-semibold transition-colors',
                         active
-                          ? 'border-gold bg-gold text-ink-950'
-                          : 'border-ink-600 bg-ink-850 text-zinc-400 hover:border-ink-500 hover:text-white'
+                          ? 'border-ink-900 bg-ink-950 text-white'
+                          : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300 hover:text-ink-900'
                       )}
                     >
                       {WEEKDAYS_SHORT[wd]}
@@ -98,7 +98,7 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
 
           {/* Terminar recorrência */}
           <div>
-            <p className="mb-1.5 text-xs font-medium text-zinc-400">Terminar recorrência</p>
+            <p className="mb-1.5 text-xs font-medium text-ink-600">Terminar recorrência</p>
             <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
@@ -106,8 +106,8 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
                 className={cn(
                   'h-11 rounded-lg border text-sm font-medium transition-colors',
                   config.endMode === 'date'
-                    ? 'border-gold bg-gold/10 text-gold'
-                    : 'border-ink-600 text-zinc-400 hover:text-white'
+                    ? 'border-ink-900 bg-ink-50 text-ink-900'
+                    : 'border-ink-200 text-ink-600 hover:text-ink-900'
                 )}
               >
                 Em uma data
@@ -118,8 +118,8 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
                 className={cn(
                   'h-11 rounded-lg border text-sm font-medium transition-colors',
                   config.endMode === 'count'
-                    ? 'border-gold bg-gold/10 text-gold'
-                    : 'border-ink-600 text-zinc-400 hover:text-white'
+                    ? 'border-ink-900 bg-ink-50 text-ink-900'
+                    : 'border-ink-200 text-ink-600 hover:text-ink-900'
                 )}
               >
                 Após X vezes
@@ -162,7 +162,7 @@ export function RecurrenceSection({ enabled, onToggle, config, onChange, preview
 function RecurrencePreview({ preview }: { preview: RecurringSlot[] }) {
   if (preview.length === 0) {
     return (
-      <div className="rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm text-zinc-500">
+      <div className="rounded-xl border border-dashed border-ink-300 bg-white px-4 py-3 text-sm text-ink-500">
         Selecione os dias e o término para gerar a prévia.
       </div>
     );
@@ -172,20 +172,20 @@ function RecurrencePreview({ preview }: { preview: RecurringSlot[] }) {
   const rest = preview.length - first.length;
 
   return (
-    <div className="rounded-xl border border-gold/25 bg-gold/5 p-4">
-      <p className="flex items-center gap-2 text-sm font-semibold text-gold">
+    <div className="rounded-xl border border-ink-200 bg-ink-50 p-4">
+      <p className="flex items-center gap-2 text-sm font-semibold text-ink-900">
         <CalendarRange className="h-4 w-4" />
         Serão criados {preview.length} agendamento(s) recorrente(s).
       </p>
       <ul className="mt-2.5 space-y-1">
         {first.map((s, i) => (
-          <li key={`${s.date}-${i}`} className="flex items-center gap-2 text-sm text-zinc-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold" />
+          <li key={`${s.date}-${i}`} className="flex items-center gap-2 text-sm text-ink-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold-500" />
             {formatDateFull(s.date)} às {formatTime(s.time)}
           </li>
         ))}
       </ul>
-      {rest > 0 && <p className="mt-2 text-xs text-zinc-500">+ {rest} agendamento(s)</p>}
+      {rest > 0 && <p className="mt-2 text-xs text-ink-500">+ {rest} agendamento(s)</p>}
     </div>
   );
 }

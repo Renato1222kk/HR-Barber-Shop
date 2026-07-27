@@ -3,11 +3,12 @@
 import { useMemo, useState } from 'react';
 import { Plus, UserCog, Clock, Pencil, Trash2, Phone } from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
-import { deleteBarber, listAppointments, listBarbers, updateBarber } from '@/lib/data/repository';
+import { removeBarber, listAppointments, listBarbers, updateBarber } from '@/services';
 import { formatCurrency } from '@/lib/utils/format';
 import { formatWhatsappDisplay } from '@/lib/utils/whatsapp';
 import { buildBarberPerformance } from '@/lib/data/analytics';
 import { cn } from '@/lib/utils/cn';
+import { errorMessage } from '@/lib/utils/error';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { LoadingState, EmptyState, ErrorState, Toggle } from '@/components/ui/Misc';
@@ -21,6 +22,7 @@ export default function BarbeirosPage() {
   const [editing, setEditing] = useState<Barber | null>(null);
   const [deleting, setDeleting] = useState<Barber | null>(null);
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const barbersQ = useAsync(() => listBarbers(), []);
   const apptsQ = useAsync(() => listAppointments(), []);
@@ -33,16 +35,25 @@ export default function BarbeirosPage() {
   }, [apptsQ.data]);
 
   const toggleActive = async (b: Barber) => {
-    await updateBarber(b.id, { active: !b.active });
-    emitDataChanged();
+    setActionError(null);
+    try {
+      await updateBarber(b.id, { active: !b.active });
+      emitDataChanged();
+    } catch (e) {
+      setActionError(errorMessage(e, 'Não foi possível alterar o barbeiro.'));
+    }
   };
 
   const confirmDelete = async () => {
     if (!deleting) return;
     setBusy(true);
+    setActionError(null);
     try {
-      await deleteBarber(deleting.id);
+      await removeBarber(deleting.id);
       emitDataChanged();
+      setDeleting(null);
+    } catch (e) {
+      setActionError(errorMessage(e, 'Não foi possível excluir o barbeiro.'));
       setDeleting(null);
     } finally {
       setBusy(false);
@@ -52,7 +63,7 @@ export default function BarbeirosPage() {
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-ink-500">
           {barbers.filter((b) => b.active).length} ativos · {barbers.length} no total
         </p>
         <Button onClick={() => setCreating(true)}>
@@ -60,6 +71,8 @@ export default function BarbeirosPage() {
           <span className="sm:hidden">Novo</span>
         </Button>
       </div>
+
+      {actionError && <ErrorState message={actionError} />}
 
       {barbersQ.loading ? (
         <LoadingState />
@@ -83,22 +96,22 @@ export default function BarbeirosPage() {
             return (
               <Card key={b.id} className={cn('p-4', !b.active && 'opacity-60')}>
                 <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold/15 text-sm font-semibold text-gold">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink-100 text-sm font-semibold text-ink-700">
                     {b.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-white">{b.name}</p>
+                      <p className="truncate text-sm font-semibold text-ink-900">{b.name}</p>
                       {!b.active && (
-                        <span className="shrink-0 rounded-full bg-ink-700 px-2 py-0.5 text-[10px] text-zinc-400">
+                        <span className="shrink-0 rounded-full bg-ink-100 px-2 py-0.5 text-[10px] text-ink-600">
                           inativo
                         </span>
                       )}
                     </div>
                     {b.specialty && (
-                      <p className="truncate text-xs text-zinc-500">{b.specialty}</p>
+                      <p className="truncate text-xs text-ink-500">{b.specialty}</p>
                     )}
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-600">
                       <span className="inline-flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5" /> {b.work_start} – {b.work_end}
                       </span>
@@ -113,14 +126,14 @@ export default function BarbeirosPage() {
                 </div>
 
                 {stats && (
-                  <div className="mt-3 grid grid-cols-3 gap-2 border-t border-ink-700/60 pt-3 text-center">
+                  <div className="mt-3 grid grid-cols-3 gap-2 border-t border-ink-200 pt-3 text-center">
                     <Stat label="Atendimentos" value={String(stats.total)} />
                     <Stat label="Concluídos" value={String(stats.completed)} />
                     <Stat label="Faturamento" value={formatCurrency(stats.revenue)} accent />
                   </div>
                 )}
 
-                <div className="mt-3 flex gap-2 border-t border-ink-700/60 pt-3">
+                <div className="mt-3 flex gap-2 border-t border-ink-200 pt-3">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -132,7 +145,7 @@ export default function BarbeirosPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex-1 text-red-400 hover:bg-red-500/10"
+                    className="flex-1 text-red-600 hover:bg-red-50 hover:text-red-700"
                     onClick={() => setDeleting(b)}
                   >
                     <Trash2 className="h-4 w-4" /> Excluir
@@ -164,11 +177,11 @@ export default function BarbeirosPage() {
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg bg-ink-900 px-2 py-2">
-      <p className={cn('truncate text-sm font-semibold', accent ? 'text-gold' : 'text-white')}>
+    <div className="rounded-lg border border-ink-200 bg-ink-50 px-2 py-2">
+      <p className={cn('truncate text-sm font-semibold', accent ? 'text-ink-900' : 'text-ink-700')}>
         {value}
       </p>
-      <p className="mt-0.5 text-[10px] text-zinc-500">{label}</p>
+      <p className="mt-0.5 text-[10px] text-ink-500">{label}</p>
     </div>
   );
 }

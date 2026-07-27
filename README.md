@@ -1,176 +1,342 @@
 # HR Barber Shop
 
-PWA de gestão para barbearia: agendamentos, clientes, barbeiros, serviços, financeiro e insights.
-Feito com **Next.js (App Router) + TypeScript + Tailwind + Recharts + Lucide**.
+PWA de gestão para barbearia: agenda, clientes, barbeiros, serviços,
+financeiro, insights e configurações.
+Feito com **Next.js (App Router) + TypeScript + Tailwind + Supabase**.
 
-> **Esta versão roda 100% em modo demonstração.**
-> Não há banco de dados, API externa nem variáveis de ambiente: todos os dados ficam
-> no `localStorage` do navegador e o app já abre com dados fictícios cadastrados.
+Os dados ficam em um projeto **Supabase** (PostgreSQL + Auth + Realtime).
+Atualizar a página não apaga nada, e abrir o sistema em outro computador
+mostra exatamente os mesmos dados.
 
 ---
 
-## 1. Rodando o projeto
+## 1. Requisitos
+
+| Item | Versão |
+| --- | --- |
+| Node.js | 18.17 ou superior |
+| npm | 9 ou superior |
+| Conta no Supabase | o plano gratuito serve |
+
+---
+
+## 2. Instalação
 
 ```bash
-npm install          # instala dependências
-npm run dev          # ambiente de desenvolvimento -> http://localhost:3000
-# ou
-npm run build && npm run start   # produção (o service worker/PWA só ativa em produção)
+npm install
 ```
 
-Abra **http://localhost:3000**. Não é preciso configurar nada.
+---
 
-### Acesso de demonstração
+## 3. Criar o projeto no Supabase
 
-A tela de login é apenas demonstrativa (nenhuma rota do app fica bloqueada):
+1. Acesse <https://supabase.com/dashboard> e clique em **New project**.
+2. Dê um nome (ex.: `hr-barber-shop`), escolha uma senha forte para o
+   banco e a região **South America (São Paulo)**.
+3. Aguarde alguns minutos até o projeto ficar pronto.
 
-| Campo  | Valor                    |
-|--------|--------------------------|
-| E-mail | `admin@hrbarbershop.com` |
-| Senha  | `123456`                 |
+> A senha do banco **não** é usada pelo aplicativo. Guarde-a com você e
+> nunca coloque em nenhum arquivo do projeto.
 
-Também existe o botão **“Entrar na demonstração”**, que entra direto.
+---
 
-### Gerar os ícones do PWA (já vêm gerados)
+## 4. Onde pegar a Project URL
+
+No painel do projeto: **Settings → Data API → Project URL**.
+
+É algo como `https://abcdefghijklm.supabase.co`.
+
+---
+
+## 5. Onde pegar a Publishable Key
+
+No painel do projeto: **Settings → API Keys → Publishable key**.
+
+Começa com `sb_publishable_...`. É uma chave **pública**: ela vai para o
+navegador, e quem protege os dados são as políticas de RLS do banco.
+
+> Projetos mais antigos mostram **anon public** no lugar. Nesse caso use
+> `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Se as duas existirem, o aplicativo dá
+> prioridade à publishable key.
+
+> **Nunca** use a `service_role` / `secret key` no aplicativo: ela ignora
+> todas as políticas de segurança.
+
+---
+
+## 6. Configurar o `.env.local`
+
+Copie o modelo e preencha:
 
 ```bash
-npm run icons
+cp .env.example .env.local
+```
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklm.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxxxxxx
+```
+
+O arquivo `.env.local` já está no `.gitignore` e **não** deve ir para o
+GitHub. Se as variáveis faltarem, o aplicativo mostra uma tela explicando
+o que preencher em vez de quebrar com um erro indefinido.
+
+---
+
+## 7. Executar o `schema.sql`
+
+1. No painel do Supabase abra **SQL Editor → New query**.
+2. Copie **todo** o conteúdo de `supabase/schema.sql`.
+3. Cole e clique em **Run**.
+
+O script é idempotente: pode ser executado de novo sem quebrar nada.
+
+Ele cria:
+
+- as tabelas `profiles`, `barbers`, `services`, `clients`,
+  `recurring_groups`, `appointments`, `financial_entries`, `settings` e
+  `working_hours`;
+- índices, chaves estrangeiras e constraints;
+- trigger de `updated_at` em todas as tabelas;
+- trigger que cria `profiles`, `settings` e o horário de funcionamento
+  padrão quando um usuário novo é criado no Auth;
+- Row Level Security com políticas separadas de SELECT, INSERT, UPDATE e
+  DELETE;
+- a constraint que impede dois atendimentos simultâneos do mesmo
+  barbeiro;
+- o Realtime das tabelas `appointments` e `financial_entries`.
+
+---
+
+## 8. Criar o usuário administrador
+
+O aplicativo **não** tem cadastro aberto: o acesso é criado no painel.
+
+1. Vá em **Authentication → Users → Add user → Create new user**.
+2. Preencha e-mail e senha.
+3. Marque **Auto Confirm User** (senão o login pede confirmação por
+   e-mail).
+4. Clique em **Create user**.
+
+O trigger `on_auth_user_created` cria automaticamente o perfil, as
+configurações e o horário de funcionamento padrão dessa conta.
+
+---
+
+## 9. Executar o seed (opcional)
+
+`supabase/seed.sql` cria alguns barbeiros, serviços, clientes,
+agendamentos e lançamentos para testar as telas. Ele **não** cria
+usuários.
+
+1. Copie o UUID do usuário em **Authentication → Users** (coluna `UID`).
+2. Abra `supabase/seed.sql` e troque o UUID na linha marcada com
+   `<<< TROQUE AQUI >>>`:
+
+   ```sql
+   v_owner uuid := 'cole-aqui-o-uuid-do-seu-usuario';
+   ```
+
+3. Cole o arquivo inteiro no **SQL Editor** e execute.
+
+Rodar duas vezes não duplica nada.
+
+---
+
+## 10. Rodar localmente
+
+```bash
+npm run dev
+```
+
+Abra <http://localhost:3000>. Sem sessão, você cai em
+<http://localhost:3000/login>.
+
+Outros comandos:
+
+```bash
+npm run typecheck   # tsc --noEmit
+npm run lint        # next lint
+npm run build       # build de produção
+npm start           # roda o build
+npm run icons       # regenera os ícones do PWA (public/icons/)
 ```
 
 ---
 
-## 2. Como funciona o armazenamento local
+## 11. Deploy na Vercel
 
-Toda a camada de dados é local e centralizada — nenhum componente fala direto com o
-`localStorage`:
+1. Suba o projeto para o GitHub (o `.env.local` não vai junto).
+2. Em <https://vercel.com/new>, importe o repositório.
+3. Framework: **Next.js** (detectado automaticamente).
+4. Preencha as variáveis de ambiente (próxima seção).
+5. Clique em **Deploy**.
 
-| Arquivo                        | Papel                                                              |
-|--------------------------------|--------------------------------------------------------------------|
-| `src/lib/data/demo-data.ts`    | dados iniciais (barbeiros, serviços, clientes, agendamentos, horários) |
-| `src/lib/data/demo-storage.ts` | leitura/gravação no `localStorage` + cache em memória + reset       |
-| `src/lib/data/repository.ts`   | CRUD e regras de negócio (a única API usada pelas telas)            |
-| `src/lib/data/analytics.ts`    | métricas derivadas (dashboard, financeiro, insights)                |
+Depois do primeiro deploy, volte ao Supabase em
+**Authentication → URL Configuration** e ajuste:
 
-- Chave usada: `hr-barber-shop:demo:v1`.
-- Na primeira abertura os dados iniciais são gerados relativos à data de hoje e gravados.
-- Toda alteração (criar, editar, excluir) é persistida e sobrevive ao recarregar a página.
-- O acesso é sempre protegido por checagem de ambiente, então a renderização no servidor
-  nunca toca o `localStorage` (sem erro de hidratação).
-- Em **Configurações → Dados da demonstração** há o botão
-  **“Restaurar dados de demonstração”**, que pede confirmação antes de apagar as alterações
-  locais e voltar ao estado inicial.
+- **Site URL**: `https://seu-projeto.vercel.app`
+- **Redirect URLs**: `https://seu-projeto.vercel.app/auth/callback`
+
+Sem isso, o link de recuperação de senha volta para `localhost`.
 
 ---
 
-## 3. Instalar como app no celular (PWA)
+## 12. Variáveis necessárias na Vercel
 
-> O service worker só é registrado em **produção**. Faça o deploy (ex.: Vercel) ou rode
-> `npm run build && npm run start` e acesse pelo IP da máquina no celular.
+Em **Settings → Environment Variables**, para os ambientes
+Production, Preview e Development:
 
-- **Android (Chrome):** menu (⋮) → **Instalar app / Adicionar à tela inicial**.
-- **iPhone (Safari):** botão **Compartilhar** → **Adicionar à Tela de Início**.
+| Nome | Valor |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Project URL do Supabase |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key |
+| `NEXT_PUBLIC_SITE_URL` | *(opcional)* endereço final, usado nas prévias de compartilhamento |
 
-O app instala como **HR Barber Shop**, em tela cheia e tema escuro.
+Nenhuma chave secreta é necessária. Não adicione `SUPABASE_SECRET_KEY`
+nem `SUPABASE_SERVICE_ROLE_KEY`.
 
 ---
 
-## 4. Estrutura do projeto
+## 13. Ativar o Realtime
+
+O `schema.sql` já adiciona `appointments` e `financial_entries` à
+publicação `supabase_realtime` e liga o `replica identity full`.
+
+Para conferir no painel: **Database → Publications → supabase_realtime**.
+As duas tabelas devem estar marcadas.
+
+Com isso, criar ou alterar um agendamento em um aparelho atualiza a
+agenda, os próximos atendimentos, o dashboard e o financeiro nos demais,
+sem recarregar a página.
+
+---
+
+## 14. Política de segurança
+
+- **RLS ligada em todas as tabelas.** Nenhuma política é concedida ao
+  papel `anon`: só usuários autenticados leem ou gravam.
+- Cada registro tem `owner_id`, e a regra é `auth.uid() = owner_id`
+  (em `profiles`, `auth.uid() = id`).
+- Políticas separadas para SELECT, INSERT, UPDATE e DELETE — nada de
+  `using (true)`.
+- O navegador recebe apenas a chave publishable. Chaves administrativas,
+  senha do banco e connection string nunca entram no código.
+- As rotas privadas (`/dashboard`, `/agenda`, `/clientes`, `/barbeiros`,
+  `/servicos`, `/financeiro`, `/insights`, `/configuracoes`) passam por
+  duas barreiras: o `middleware.ts` e a checagem de sessão no layout do
+  grupo `(app)`.
+- **Conflito de horário** é garantido no banco por uma constraint de
+  exclusão (`appointments_no_barber_overlap`), não só na tela. Se duas
+  pessoas gravarem o mesmo horário ao mesmo tempo, uma passa e a outra
+  recebe *"Este barbeiro já possui um atendimento nesse horário."*
+
+---
+
+## 15. Migração dos dados do localStorage
+
+Quem usou a versão de demonstração tem dados salvos no navegador. Para
+trazê-los:
+
+1. Entre com o usuário criado no passo 8.
+2. Vá em **Configurações**.
+3. O cartão **"Migrar dados da demonstração"** aparece automaticamente,
+   mostrando quantos barbeiros, serviços, clientes e agendamentos foram
+   encontrados.
+4. Clique em **Importar** e confirme.
+
+A importação:
+
+- respeita a ordem (barbeiros → serviços → clientes → agendamentos);
+- preserva os vínculos entre os registros;
+- não duplica o que já existe;
+- mostra o resultado de cada tipo ao final;
+- só apaga os dados antigos do navegador **depois** de terminar sem erro.
+
+Concluída a importação, uma marca local impede que o cartão volte a
+aparecer. O cartão só existe enquanto houver dados antigos.
+
+---
+
+## Estrutura do projeto
 
 ```
-src/
-  app/
-    layout.tsx              # root (AuthProvider, metadata PWA, fontes)
-    page.tsx                # redireciona para /dashboard
-    login/page.tsx          # tela de login (demonstração)
-    (app)/                  # área do app (sidebar + bottom nav + header)
-      layout.tsx            # AppShell (sem bloqueio de rota)
-      dashboard/page.tsx
-      agenda/page.tsx       # views dia / semana / mês + filtros
-      clientes/page.tsx
-      barbeiros/page.tsx
-      servicos/page.tsx
-      financeiro/page.tsx   # gráficos Recharts
-      insights/page.tsx
-      configuracoes/page.tsx
-  components/
-    brand/                  # Logo e monograma "HR"
-    ui/                     # Button, Card, Field, Modal, ConfirmDialog, Misc
-    layout/                 # Sidebar (recolhível no mobile), Header, BottomNav, AppShell, nav
-    dashboard/              # StatCard
-    agenda/                 # AppointmentModal, AppointmentCard, AppointmentDetail, RecurrenceSection
-    clients/                # ClientModal, ClientDetail
-    barbers/                # BarberModal
-    services/               # ServiceModal
-    charts/                 # Charts (área, barras, pizza)
-    WhatsAppButton.tsx
-  lib/
-    auth/AuthProvider.tsx   # sessão local de demonstração
-    data/                   # demo-data, demo-storage, repository, analytics
-    utils/                  # format, whatsapp, cn, error, recurrence
-    constants.ts            # marca, status, dias da semana
-    hooks.ts / events.ts    # fetch + refetch reativo
-  types/index.ts            # tipos do domínio
+middleware.ts               Renova a sessão e protege as rotas privadas
+supabase/
+  schema.sql                Schema completo (tabelas, RLS, triggers, realtime)
+  seed.sql                  Dados de teste opcionais
 public/
-  manifest.webmanifest      # PWA
-  sw.js                     # service worker (offline + cache)
-  icons/                    # ícones "HR" gerados
-docs/supabase/              # SQL da versão antiga (documentação, não é usado pelo app)
-scripts/generate-icons.mjs  # gerador de ícones PNG
+  hr-barber-shop-logo.jpeg  Logo oficial
+  icons/                    Ícones do PWA (fundo branco)
+  manifest.webmanifest      Manifesto de instalação
+src/
+  app/                      Rotas (App Router)
+  components/               Interface
+  hooks/use-realtime.ts     Assinatura do Realtime
+  lib/supabase/             client / server / middleware / validação do env
+  lib/data/analytics.ts     Dashboard, financeiro e insights (cálculos)
+  lib/data/migrate-demo.ts  Importador único do localStorage antigo
+  services/                 Acesso ao banco (list/getById/create/update/remove)
+  types/                    Tipos do domínio e do banco
 ```
 
----
-
-## 5. Funcionalidades
-
-- **Dashboard**: agendamentos de hoje, concluídos, pendentes, cancelamentos, faturamento do dia
-  (somente concluídos) e do mês, próximos atendimentos, serviços mais realizados e desempenho
-  por barbeiro — tudo calculado a partir dos dados locais.
-- **Agenda**: visões **dia / semana / mês**, navegação por data, além de filtros por
-  **cliente (busca)**, **barbeiro** e **status**.
-- **Agendamento**: criar, editar, cancelar, excluir, alterar status, escolher cliente, barbeiro,
-  serviço, data, horário e observação. O cliente é criado automaticamente se ainda não existir e
-  duração/valor são preenchidos pelo serviço.
-- **Conflito de horário**: um barbeiro não pode ter dois atendimentos sobrepostos. A validação
-  considera a duração do serviço e exibe
-  *“Este barbeiro já possui um atendimento nesse horário.”*
-- **Agendamento recorrente**: semanal / quinzenal / mensal / personalizado, com prévia,
-  detecção de conflitos (opção de criar apenas os horários livres) e escolha entre
-  **“apenas este”** ou **“toda a série”** ao editar/excluir.
-- **Clientes**: busca, CRUD, histórico de atendimentos, total gasto, última visita e serviço
-  mais frequente.
-- **Barbeiros**: CRUD, ativar/desativar, telefone, especialidade, horário de atendimento e
-  desempenho individual.
-- **Serviços**: CRUD, preço, duração, descrição e ativo/inativo.
-- **Financeiro**: faturamento dia/semana/mês, ticket médio, contadores por status, gráficos e
-  rankings por serviço, por barbeiro e por cliente.
-- **Insights** automáticos (melhor dia, horário de pico, serviço campeão, barbeiro destaque,
-  cancelamentos, ticket médio, cliente sumido, crescimento vs. mês anterior).
-- **WhatsApp**: mensagens prontas de confirmação e retorno via `wa.me`.
-- **Responsivo**: sidebar fixa no desktop, menu lateral recolhível e bottom nav no celular.
+Nenhum componente chama `.from()` direto: todo acesso ao banco passa por
+`src/services`.
 
 ---
 
-## 6. Status de agendamento
+## Status dos agendamentos
 
-| Status           | Cor      |
-|------------------|----------|
-| Agendado         | azul     |
-| Confirmado       | verde    |
-| Em atendimento   | roxo     |
-| Concluído        | dourado  |
-| Cancelado        | cinza    |
+| Banco | Interface |
+| --- | --- |
+| `agendado` | Agendado |
+| `confirmado` | Confirmado |
+| `em_atendimento` | Em atendimento |
+| `concluido` | Concluído |
+| `cancelado` | Cancelado |
 
-O faturamento considera **somente** atendimentos concluídos.
+O faturamento considera **apenas atendimentos concluídos** e os
+lançamentos financeiros registrados. Agendamento cancelado nunca entra
+como receita.
 
 ---
 
-## 7. Scripts
+## A logo e o tema
 
-| Comando             | O que faz                        |
-|---------------------|----------------------------------|
-| `npm run dev`       | desenvolvimento (hot reload)     |
-| `npm run build`     | build de produção                |
-| `npm run start`     | servidor de produção (ativa PWA) |
-| `npm run lint`      | lint                             |
-| `npm run typecheck` | checagem de tipos (`tsc --noEmit`) |
-| `npm run icons`     | regera os ícones do PWA          |
+A arte oficial fica em `public/hr-barber-shop-logo.jpeg` (1254×1254) e é
+carregada com o componente `Image` do Next.js (`src/components/brand/Logo.tsx`).
+Ela aparece no login, no menu lateral, no cabeçalho mobile, na tela de
+carregamento, nas configurações e nas prévias de compartilhamento
+(Open Graph / WhatsApp).
+
+A imagem usa `object-contain` dentro de um quadro quadrado: nunca é
+esticada nem cortada. `LogoMark` é a versão compacta (monograma), usada
+onde não há espaço para o nome por extenso.
+
+### Tema
+
+A aplicação tem um único tema oficial: **claro**, predominantemente
+branco. Os tokens ficam em `tailwind.config.ts`:
+
+| Token | Cor | Uso |
+| --- | --- | --- |
+| `ink-50` | `#f8f9fa` | fundo das páginas |
+| `white` | `#ffffff` | cards, sidebar, cabeçalho, modais |
+| `ink-100` | `#f3f4f6` | hover e áreas secundárias |
+| `ink-200` | `#e5e7eb` | bordas |
+| `ink-500` | `#6b7280` | texto secundário |
+| `ink-900` | `#111827` | texto principal |
+| `ink-950` | `#111111` | botão primário, destaques |
+| `gold` | `#c59b3d` | detalhes discretos (ícones, filetes) |
+
+A coluna `settings.theme` continua existindo por compatibilidade e é
+sempre gravada como `light`. Bancos criados antes desta versão precisam
+da migração `supabase/migrations/001_theme_light.sql` — o check antigo só
+aceitava `dark` e `gold`.
+
+### Ícones do PWA
+
+`npm run icons` regenera `public/icons/`. Sem dependências, o script
+desenha o monograma **HR** em preto sobre branco, com um filete dourado.
+Com `npm i -D sharp` instalado, ele passa a recortar a própria arte
+oficial sobre fundo branco, com margem interna.

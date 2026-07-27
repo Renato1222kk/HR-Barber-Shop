@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import { Search, UserPlus, Users, Phone } from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
-import { listAppointments, listClients, computeClientStats } from '@/lib/data/repository';
+import { listAppointments, listClients } from '@/services';
+import { computeClientStats } from '@/lib/data/analytics';
 import { formatCurrency, formatDateShort } from '@/lib/utils/format';
 import { formatWhatsappDisplay } from '@/lib/utils/whatsapp';
 import { Button } from '@/components/ui/Button';
@@ -53,7 +54,7 @@ export default function ClientesPage() {
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
           <Input
             placeholder="Buscar por nome ou WhatsApp"
             className="pl-10"
@@ -68,7 +69,7 @@ export default function ClientesPage() {
       </div>
 
       {!loading && !error && (
-        <p className="px-1 text-xs text-zinc-500">
+        <p className="px-1 text-xs text-ink-500">
           {filtered.length} {filtered.length === 1 ? 'cliente' : 'clientes'}
         </p>
       )}
@@ -96,14 +97,14 @@ export default function ClientesPage() {
             <Card
               key={c.id}
               onClick={() => setSelected(c)}
-              className="flex cursor-pointer items-center gap-3 p-3.5 transition-colors hover:bg-ink-800"
+              className="flex cursor-pointer items-center gap-3 p-3.5 transition-colors hover:bg-ink-100"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold/15 text-sm font-semibold text-gold">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink-100 text-sm font-semibold text-ink-700">
                 {c.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-white">{c.name}</p>
-                <p className="flex items-center gap-1 truncate text-xs text-zinc-500">
+                <p className="truncate text-sm font-semibold text-ink-900">{c.name}</p>
+                <p className="flex items-center gap-1 truncate text-xs text-ink-500">
                   {c.whatsapp ? (
                     <>
                       <Phone className="h-3 w-3" /> {formatWhatsappDisplay(c.whatsapp)}
@@ -112,15 +113,15 @@ export default function ClientesPage() {
                     'sem WhatsApp'
                   )}
                 </p>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-ink-500">
                   <span>{c.appointments_count} atend.</span>
                   {c.last_visit && <span>Últ. {formatDateShort(c.last_visit)}</span>}
-                  {c.top_service && <span className="text-zinc-400">{c.top_service}</span>}
+                  {c.top_service && <span className="text-ink-600">{c.top_service}</span>}
                 </div>
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-sm font-semibold text-gold">{formatCurrency(c.total_spent)}</p>
-                <p className="text-[11px] text-zinc-500">total</p>
+                <p className="text-sm font-semibold text-ink-900">{formatCurrency(c.total_spent)}</p>
+                <p className="text-[11px] text-ink-500">total</p>
               </div>
             </Card>
           ))}

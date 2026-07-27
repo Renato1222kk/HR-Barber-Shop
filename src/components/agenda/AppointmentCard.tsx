@@ -23,25 +23,25 @@ export function AppointmentCard({ appointment: a, onClick, compact, showWhatsapp
     <button
       onClick={onClick}
       className={cn(
-        'group flex w-full items-center gap-3 rounded-xl border border-ink-700/60 border-l-4 bg-ink-850 px-3 py-3 text-left transition-colors hover:border-ink-600 hover:bg-ink-800',
+        'group flex w-full items-center gap-3 rounded-xl border border-ink-200 border-l-4 bg-white px-3 py-3 text-left transition-colors hover:border-ink-300 hover:bg-ink-50 hover:shadow-card',
         meta.bar
       )}
     >
       <div className="flex w-14 shrink-0 flex-col items-center">
-        <span className="text-base font-semibold text-white">{formatTime(a.start_time)}</span>
-        <span className="text-[11px] text-zinc-500">{formatTime(a.end_time)}</span>
+        <span className="text-base font-semibold text-ink-900">{formatTime(a.start_time)}</span>
+        <span className="text-[11px] text-ink-500">{formatTime(a.end_time)}</span>
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-white">{a.client_name}</p>
-        <p className="truncate text-xs text-zinc-400">
+        <p className="truncate text-sm font-semibold text-ink-900">{a.client_name}</p>
+        <p className="truncate text-xs text-ink-600">
           {a.service_name}
-          {a.barber_name && <span className="text-zinc-500"> · {a.barber_name}</span>}
+          {a.barber_name && <span className="text-ink-500"> · {a.barber_name}</span>}
         </p>
         {!compact && (
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <StatusBadge status={a.status} />
-            <span className="inline-flex items-center gap-1 text-[11px] text-zinc-500">
+            <span className="inline-flex items-center gap-1 text-[11px] text-ink-500">
               <Clock className="h-3 w-3" />
               {a.duration_minutes}min
             </span>
@@ -50,7 +50,7 @@ export function AppointmentCard({ appointment: a, onClick, compact, showWhatsapp
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <span className="text-sm font-semibold text-gold">{formatCurrency(a.price)}</span>
+        <span className="text-sm font-semibold text-ink-900">{formatCurrency(a.price)}</span>
         {showWhatsapp && a.client_whatsapp && (
           <span onClick={(e) => e.stopPropagation()}>
             <WhatsAppButton
@@ -65,7 +65,7 @@ export function AppointmentCard({ appointment: a, onClick, compact, showWhatsapp
             />
           </span>
         )}
-        <MoreVertical className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400" />
+        <MoreVertical className="h-4 w-4 text-ink-400 group-hover:text-ink-600" />
       </div>
     </button>
   );

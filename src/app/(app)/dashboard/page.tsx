@@ -16,7 +16,7 @@ import {
   UserCog,
 } from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
-import { getSettings, listAppointments, listWorkingHours } from '@/lib/data/repository';
+import { getSettings, listAppointments, listWorkingHours } from '@/services';
 import { buildDashboard } from '@/lib/data/analytics';
 import { capitalize, formatCurrency } from '@/lib/utils/format';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -58,11 +58,11 @@ export default function DashboardPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm text-zinc-500">
+          <p className="truncate text-sm text-ink-500">
             {greeting}
             {owner ? `, ${owner}` : ''} 👋
           </p>
-          <h2 className="text-xl font-semibold text-white">
+          <h2 className="text-xl font-semibold text-ink-900">
             {capitalize(
               today.toLocaleDateString('pt-BR', {
                 weekday: 'long',
@@ -125,7 +125,7 @@ export default function DashboardPage() {
           <CardTitle>Próximos atendimentos</CardTitle>
           <Link
             href="/agenda"
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-gold hover:underline"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-ink-700 transition-colors hover:text-ink-900 hover:underline"
           >
             Ver agenda <ArrowRight className="h-3.5 w-3.5" />
           </Link>
@@ -162,25 +162,22 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Scissors className="h-4 w-4 text-gold" /> Serviços mais realizados
+              <Scissors className="h-4 w-4 text-gold-600" /> Serviços mais realizados
             </CardTitle>
           </CardHeader>
           <CardContent>
             {summary.topServices.length === 0 ? (
-              <p className="py-8 text-center text-sm text-zinc-500">Sem dados no mês.</p>
+              <p className="py-8 text-center text-sm text-ink-500">Sem dados no mês.</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="divide-y divide-ink-100">
                 {summary.topServices.map((s, i) => (
-                  <div
-                    key={s.label}
-                    className="flex items-center gap-3 rounded-lg bg-ink-900 px-3 py-2.5"
-                  >
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold">
+                  <div key={s.label} className="flex items-center gap-3 px-1 py-2.5">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink-100 text-xs font-semibold text-ink-700">
                       {i + 1}
                     </span>
-                    <p className="min-w-0 flex-1 truncate text-sm text-white">{s.label}</p>
-                    <span className="shrink-0 text-xs text-zinc-500">{s.value}x</span>
-                    <span className="shrink-0 text-sm font-semibold text-gold">
+                    <p className="min-w-0 flex-1 truncate text-sm text-ink-700">{s.label}</p>
+                    <span className="shrink-0 text-xs text-ink-500">{s.value}x</span>
+                    <span className="shrink-0 text-sm font-semibold text-ink-900">
                       {formatCurrency(s.revenue)}
                     </span>
                   </div>
@@ -194,29 +191,26 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <UserCog className="h-4 w-4 text-gold" /> Desempenho por barbeiro
+              <UserCog className="h-4 w-4 text-gold-600" /> Desempenho por barbeiro
             </CardTitle>
           </CardHeader>
           <CardContent>
             {summary.barbers.length === 0 ? (
-              <p className="py-8 text-center text-sm text-zinc-500">Sem dados no mês.</p>
+              <p className="py-8 text-center text-sm text-ink-500">Sem dados no mês.</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="divide-y divide-ink-100">
                 {summary.barbers.map((b) => (
-                  <div
-                    key={b.name}
-                    className="flex items-center gap-3 rounded-lg bg-ink-900 px-3 py-2.5"
-                  >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold">
+                  <div key={b.name} className="flex items-center gap-3 px-1 py-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink-100 text-xs font-semibold text-ink-700">
                       {b.name.charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-white">{b.name}</p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="truncate text-sm font-medium text-ink-900">{b.name}</p>
+                      <p className="text-xs text-ink-500">
                         {b.completed} de {b.total} concluído(s)
                       </p>
                     </div>
-                    <span className="shrink-0 text-sm font-semibold text-gold">
+                    <span className="shrink-0 text-sm font-semibold text-ink-900">
                       {formatCurrency(b.revenue)}
                     </span>
                   </div>

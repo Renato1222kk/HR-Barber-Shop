@@ -1,4 +1,10 @@
-import type { Appointment, AppointmentStatus, Client } from '@/types';
+import type {
+  Appointment,
+  AppointmentStatus,
+  Client,
+  ClientWithStats,
+  FinancialEntry,
+} from '@/types';
 import { parseDate, toISODate, timeToMinutes } from '@/lib/utils/format';
 import { WEEKDAYS } from '@/lib/constants';
 
@@ -229,6 +235,75 @@ export function buildFinance(appointments: Appointment[], ref: Date): FinanceSum
     revenueByDay,
     barbers: buildBarberPerformance(monthAll),
   };
+}
+
+// =====================================================================
+// LANCAMENTOS MANUAIS (financial_entries)
+//
+// Complementam o faturamento dos atendimentos concluidos: entram aqui as
+// receitas e despesas que nao passam pela agenda.
+// =====================================================================
+export interface EntriesSummary {
+  monthIncome: number;
+  monthExpense: number;
+  /** Receita dos atendimentos concluidos + receitas manuais - despesas. */
+  monthBalance: number;
+}
+
+export function buildEntriesSummary(
+  entries: FinancialEntry[],
+  appointmentsRevenue: number,
+  ref: Date
+): EntriesSummary {
+  const month = entries.filter((e) => inMonth(e.occurred_at, ref));
+  const sum = (type: FinancialEntry['type']) =>
+    month
+      .filter((e) => e.type === type)
+      .reduce((total, e) => total + Number(e.amount || 0), 0);
+
+  const monthIncome = sum('income');
+  const monthExpense = sum('expense');
+
+  return {
+    monthIncome,
+    monthExpense,
+    monthBalance: appointmentsRevenue + monthIncome - monthExpense,
+  };
+}
+
+// =====================================================================
+// CLIENTES
+// =====================================================================
+/** Enriquece cada cliente com o resumo dos atendimentos concluidos. */
+export function computeClientStats(
+  clients: Client[],
+  appointments: Appointment[]
+): ClientWithStats[] {
+  return clients.map((client) => {
+    const done = appointments.filter(
+      (a) => a.client_id === client.id && a.status === 'concluido'
+    );
+    const total = done.reduce((sum, a) => sum + Number(a.price), 0);
+    const last = done
+      .map((a) => a.date)
+      .sort()
+      .at(-1);
+
+    // servico mais frequente
+    const counts: Record<string, number> = {};
+    done.forEach((a) => {
+      counts[a.service_name] = (counts[a.service_name] || 0) + 1;
+    });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+    return {
+      ...client,
+      appointments_count: done.length,
+      total_spent: total,
+      last_visit: last ?? null,
+      top_service: top,
+    };
+  });
 }
 
 // =====================================================================

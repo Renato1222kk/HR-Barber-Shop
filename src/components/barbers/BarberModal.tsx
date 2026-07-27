@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { ErrorState, Toggle } from '@/components/ui/Misc';
-import { createBarber, updateBarber } from '@/lib/data/repository';
+import { createBarber, updateBarber } from '@/services';
 import { errorMessage } from '@/lib/utils/error';
 import { emitDataChanged } from '@/lib/events';
 import type { Barber, BarberInput } from '@/types';
@@ -119,8 +119,8 @@ export function BarberModal({ open, onClose, barber }: Props) {
             />
           </Field>
         </div>
-        <div className="flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3">
-          <span className="text-sm text-zinc-300">Barbeiro ativo</span>
+        <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
+          <span className="text-sm text-ink-700">Barbeiro ativo</span>
           <Toggle checked={form.active} onChange={(v) => set({ active: v })} />
         </div>
       </div>

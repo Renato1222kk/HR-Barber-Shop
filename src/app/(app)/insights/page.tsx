@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
-import { listAppointments, listClients } from '@/lib/data/repository';
+import { listAppointments, listClients } from '@/services';
 import { buildInsights, type Insight } from '@/lib/data/analytics';
 import { cn } from '@/lib/utils/cn';
 import { Card } from '@/components/ui/Card';
@@ -32,10 +32,10 @@ const ICONS: Record<Insight['icon'], LucideIcon> = {
 };
 
 const TONES: Record<Insight['tone'], string> = {
-  gold: 'bg-gold/15 text-gold',
-  green: 'bg-green-500/15 text-green-400',
-  red: 'bg-red-500/15 text-red-400',
-  blue: 'bg-blue-500/15 text-blue-400',
+  gold: 'bg-gold-50 text-gold-700',
+  green: 'bg-green-50 text-green-700',
+  red: 'bg-red-50 text-red-700',
+  blue: 'bg-blue-50 text-blue-700',
 };
 
 export default function InsightsPage() {
@@ -55,13 +55,13 @@ export default function InsightsPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex items-center gap-3 rounded-2xl border border-gold/20 bg-gradient-to-br from-gold/10 to-transparent p-4">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/20 text-gold">
+      <div className="flex items-center gap-3 rounded-2xl border border-ink-200 bg-white p-4 shadow-card">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold-50 text-gold-600">
           <Sparkles className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-white">Insights automáticos</h2>
-          <p className="text-xs text-zinc-400">Gerados a partir dos dados da barbearia.</p>
+          <h2 className="text-sm font-semibold text-ink-900">Insights automáticos</h2>
+          <p className="text-xs text-ink-600">Gerados a partir dos dados da barbearia.</p>
         </div>
       </div>
 
@@ -85,7 +85,7 @@ export default function InsightsPage() {
                 >
                   <Icon className="h-5 w-5" />
                 </div>
-                <p className="pt-1 text-sm leading-snug text-zinc-200">{ins.title}</p>
+                <p className="pt-1 text-sm leading-snug text-ink-900">{ins.title}</p>
               </Card>
             );
           })}

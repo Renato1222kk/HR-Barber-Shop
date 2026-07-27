@@ -8,32 +8,42 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Premium dark palette
+        /**
+         * Paleta clara "premium": branco nas superfícies, cinza muito claro
+         * no fundo e grafite no texto. A escala segue a convenção do Tailwind
+         * (número baixo = claro), então `bg-ink-50` é fundo e `text-ink-900`
+         * é o texto principal.
+         */
         ink: {
-          950: '#0a0a0b',
-          900: '#111113',
-          850: '#17171a',
-          800: '#1d1d21',
-          700: '#26262b',
-          600: '#33333a',
-          500: '#4a4a52',
+          50: '#f8f9fa', // fundo principal da aplicação
+          100: '#f3f4f6', // hover / áreas secundárias
+          200: '#e5e7eb', // bordas
+          300: '#d1d5db', // bordas em destaque
+          400: '#9ca3af', // texto terciário, ícones apagados
+          500: '#6b7280', // texto secundário
+          600: '#4b5563', // ícones e texto de apoio
+          700: '#374151', // grafite
+          800: '#1f2937',
+          900: '#111827', // texto principal
+          950: '#111111', // preto de destaque (botões primários)
         },
+        // Dourado discreto: só em detalhes pequenos (ícones, filetes).
         gold: {
-          DEFAULT: '#c9a24b',
-          50: '#faf5e8',
-          100: '#f0e3c0',
-          200: '#e3cd8f',
-          300: '#d6b75f',
-          400: '#cba94f',
-          500: '#c9a24b',
-          600: '#a9842f',
-          700: '#856626',
+          DEFAULT: '#c59b3d',
+          50: '#faf6ec',
+          100: '#f2e8cd',
+          200: '#e6d2a0',
+          300: '#d8bb72',
+          400: '#cda954',
+          500: '#c59b3d',
+          600: '#a37f2f',
+          700: '#7d6124',
         },
         status: {
-          agendado: '#3b82f6',
-          confirmado: '#22c55e',
-          atendido: '#c9a24b',
-          faltou: '#ef4444',
+          agendado: '#2563eb',
+          confirmado: '#16a34a',
+          atendido: '#c59b3d',
+          faltou: '#dc2626',
           cancelado: '#6b7280',
         },
       },
@@ -41,9 +51,9 @@ const config: Config = {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        soft: '0 4px 24px -4px rgba(0, 0, 0, 0.5)',
-        card: '0 2px 16px -2px rgba(0, 0, 0, 0.4)',
-        gold: '0 4px 20px -4px rgba(201, 162, 75, 0.4)',
+        // Sombras discretas — o contraste vem das bordas, não do peso.
+        soft: '0 8px 28px -12px rgba(17, 24, 39, 0.18)',
+        card: '0 1px 2px 0 rgba(17, 24, 39, 0.04), 0 1px 3px 0 rgba(17, 24, 39, 0.06)',
       },
       borderRadius: {
         xl: '1rem',

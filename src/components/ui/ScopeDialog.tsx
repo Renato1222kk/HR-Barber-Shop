@@ -29,8 +29,8 @@ export function ScopeDialog({
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <div className="space-y-4">
-        <div className="flex items-center gap-3 rounded-xl bg-gold/10 px-4 py-3 text-gold">
-          <Repeat className="h-5 w-5 shrink-0" />
+        <div className="flex items-center gap-3 rounded-xl border border-ink-200 bg-ink-50 px-4 py-3 text-ink-700">
+          <Repeat className="h-5 w-5 shrink-0 text-gold-600" />
           <p className="text-sm">{description}</p>
         </div>
 
@@ -38,19 +38,19 @@ export function ScopeDialog({
           <button
             disabled={loading}
             onClick={() => onChoose('one')}
-            className="flex w-full items-center gap-3 rounded-xl border border-ink-600 bg-ink-900 px-4 py-3.5 text-left transition-colors hover:border-gold/50 hover:bg-ink-800 disabled:opacity-50"
+            className="flex w-full items-center gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3.5 text-left transition-colors hover:border-ink-300 hover:bg-ink-50 disabled:opacity-50"
           >
-            <CalendarCheck2 className="h-5 w-5 text-zinc-300" />
-            <span className="text-sm font-medium text-white">{oneLabel}</span>
+            <CalendarCheck2 className="h-5 w-5 text-ink-500" />
+            <span className="text-sm font-medium text-ink-900">{oneLabel}</span>
           </button>
 
           <button
             disabled={loading}
             onClick={() => onChoose('series')}
-            className="flex w-full items-center gap-3 rounded-xl border border-ink-600 bg-ink-900 px-4 py-3.5 text-left transition-colors hover:border-gold/50 hover:bg-ink-800 disabled:opacity-50"
+            className="flex w-full items-center gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3.5 text-left transition-colors hover:border-ink-300 hover:bg-ink-50 disabled:opacity-50"
           >
-            <CalendarClock className="h-5 w-5 text-zinc-300" />
-            <span className="text-sm font-medium text-white">{seriesLabel}</span>
+            <CalendarClock className="h-5 w-5 text-ink-500" />
+            <span className="text-sm font-medium text-ink-900">{seriesLabel}</span>
           </button>
         </div>
 

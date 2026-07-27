@@ -11,7 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
-import { listAppointments, listBarbers } from '@/lib/data/repository';
+import { listAppointments, listBarbers } from '@/services';
 import { cn } from '@/lib/utils/cn';
 import { toISODate, formatCurrency, capitalize } from '@/lib/utils/format';
 import { WEEKDAYS, WEEKDAYS_SHORT, STATUS_META, STATUS_ORDER } from '@/lib/constants';
@@ -94,14 +94,14 @@ export default function AgendaPage() {
     <div className="space-y-4 animate-fade-in">
       {/* Toggle de visualizacao */}
       <div className="flex items-center justify-between gap-3">
-        <div className="inline-flex rounded-xl border border-ink-700 bg-ink-850 p-1">
+        <div className="inline-flex rounded-xl border border-ink-200 bg-white p-1">
           {(['dia', 'semana', 'mes'] as View[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
               className={cn(
                 'rounded-lg px-3.5 py-1.5 text-sm font-medium capitalize transition-colors',
-                view === v ? 'bg-gold text-ink-950' : 'text-zinc-400 hover:text-white'
+                view === v ? 'bg-ink-950 text-white shadow-sm' : 'text-ink-600 hover:bg-ink-50 hover:text-ink-900'
               )}
             >
               {v}
@@ -115,14 +115,14 @@ export default function AgendaPage() {
             className={cn(
               'relative flex h-10 w-10 items-center justify-center rounded-xl border transition-colors',
               filtersOpen || activeFilters
-                ? 'border-gold/50 bg-gold/10 text-gold'
-                : 'border-ink-700 text-zinc-400 hover:bg-ink-800 hover:text-white'
+                ? 'border-ink-900 bg-ink-900 text-white'
+                : 'border-ink-200 text-ink-600 hover:bg-ink-100 hover:text-ink-900'
             )}
             aria-label="Filtros"
           >
-            <SlidersHorizontal className="h-4.5 w-4.5" />
+            <SlidersHorizontal className="h-[18px] w-[18px]" />
             {activeFilters > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-semibold text-ink-950">
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold-600 text-[10px] font-semibold text-white ring-2 ring-white">
                 {activeFilters}
               </span>
             )}
@@ -141,7 +141,7 @@ export default function AgendaPage() {
       {filtersOpen && (
         <Card className="space-y-3 p-3.5 animate-fade-in">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
             <Input
               placeholder="Pesquisar cliente"
               className="pl-10"
@@ -173,7 +173,7 @@ export default function AgendaPage() {
           {activeFilters > 0 && (
             <button
               onClick={clearFilters}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-gold hover:underline"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-700 hover:text-ink-900 hover:underline"
             >
               <X className="h-3.5 w-3.5" /> Limpar filtros
             </button>
@@ -186,15 +186,15 @@ export default function AgendaPage() {
         <button
           onClick={() => move(-1)}
           aria-label="Período anterior"
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink-700 text-zinc-400 hover:bg-ink-800 hover:text-white"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-100 hover:text-ink-900"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <div className="min-w-0 px-2 text-center">
-          <p className="truncate text-sm font-semibold text-white">{label}</p>
+          <p className="truncate text-sm font-semibold text-ink-900">{label}</p>
           <button
             onClick={() => setCursor(new Date())}
-            className="text-xs text-gold hover:underline"
+            className="text-xs font-medium text-ink-600 hover:text-ink-900 hover:underline"
           >
             Hoje
           </button>
@@ -202,7 +202,7 @@ export default function AgendaPage() {
         <button
           onClick={() => move(1)}
           aria-label="Próximo período"
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink-700 text-zinc-400 hover:bg-ink-800 hover:text-white"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-100 hover:text-ink-900"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
@@ -292,10 +292,10 @@ function DayView({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2 px-1 text-xs text-zinc-500">
+      <div className="flex items-center justify-between gap-2 px-1 text-xs text-ink-500">
         <span>{list.length} agendamento(s)</span>
         <span>
-          Concluído: <span className="font-semibold text-gold">{formatCurrency(total)}</span>
+          Concluído: <span className="font-semibold text-ink-900">{formatCurrency(total)}</span>
         </span>
       </div>
       {list.map((a) => (
@@ -337,17 +337,17 @@ function WeekView({
           <Card key={iso} className="overflow-hidden">
             <button
               onClick={() => onPickDay(d)}
-              className="flex w-full items-center justify-between border-b border-ink-700/60 px-4 py-2.5 text-left hover:bg-ink-800"
+              className="flex w-full items-center justify-between border-b border-ink-100 px-4 py-2.5 text-left transition-colors hover:bg-ink-50"
             >
               <span
                 className={cn(
                   'text-sm font-semibold capitalize',
-                  isToday ? 'text-gold' : 'text-white'
+                  isToday ? 'text-ink-900 underline decoration-gold decoration-2 underline-offset-4' : 'text-ink-700'
                 )}
               >
                 {WEEKDAYS[d.getDay()]} {d.getDate()}
               </span>
-              <span className="text-xs text-zinc-500">{list.length} agend.</span>
+              <span className="text-xs text-ink-500">{list.length} agend.</span>
             </button>
             {list.length > 0 && (
               <div className="space-y-1.5 p-2.5">
@@ -402,7 +402,7 @@ function MonthView({
     <Card className="p-2 sm:p-3">
       <div className="mb-2 grid grid-cols-7 gap-1 text-center">
         {WEEKDAYS_SHORT.map((w) => (
-          <span key={w} className="py-1 text-[11px] font-medium text-zinc-500">
+          <span key={w} className="py-1 text-[11px] font-medium text-ink-500">
             {w}
           </span>
         ))}
@@ -422,13 +422,16 @@ function MonthView({
               className={cn(
                 'flex aspect-square flex-col items-center justify-start gap-1 rounded-lg border p-1 transition-colors',
                 isToday
-                  ? 'border-gold/60 bg-gold/10'
-                  : 'border-transparent hover:border-ink-600 hover:bg-ink-800',
+                  ? 'border-ink-900 bg-ink-50'
+                  : 'border-transparent hover:border-ink-200 hover:bg-ink-50',
                 list.length === 0 && 'opacity-60'
               )}
             >
               <span
-                className={cn('text-xs font-medium', isToday ? 'text-gold' : 'text-zinc-300')}
+                className={cn(
+                  'text-xs',
+                  isToday ? 'font-bold text-ink-900' : 'font-medium text-ink-700'
+                )}
               >
                 {d.getDate()}
               </span>
@@ -441,7 +444,7 @@ function MonthView({
                   />
                 ))}
                 {list.length > 3 && (
-                  <span className="text-[9px] leading-none text-zinc-500">
+                  <span className="text-[9px] leading-none text-ink-500">
                     +{list.length - 3}
                   </span>
                 )}

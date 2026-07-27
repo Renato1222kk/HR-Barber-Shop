@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { ErrorState, Toggle } from '@/components/ui/Misc';
-import { createService, updateService } from '@/lib/data/repository';
+import { createService, updateService } from '@/services';
 import { errorMessage } from '@/lib/utils/error';
 import { emitDataChanged } from '@/lib/events';
 import type { Service, ServiceInput } from '@/types';
@@ -114,8 +114,8 @@ export function ServiceModal({ open, onClose, service }: Props) {
             onChange={(e) => set({ description: e.target.value || null })}
           />
         </Field>
-        <div className="flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3">
-          <span className="text-sm text-zinc-300">Serviço ativo</span>
+        <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
+          <span className="text-sm text-ink-700">Serviço ativo</span>
           <Toggle checked={form.active} onChange={(v) => set({ active: v })} />
         </div>
       </div>

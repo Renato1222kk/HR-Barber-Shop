@@ -23,7 +23,7 @@ import {
   listServices,
   updateAppointment,
   updateAppointmentSeries,
-} from '@/lib/data/repository';
+} from '@/services';
 import { emitDataChanged } from '@/lib/events';
 import type {
   Appointment,
@@ -31,6 +31,7 @@ import type {
   Barber,
   Client,
   EditScope,
+  PaymentMethod,
   RecurrenceConfig,
   RecurringSlot,
   Service,
@@ -58,8 +59,17 @@ const empty = (date: string, time: string): AppointmentInput => ({
   duration_minutes: 40,
   price: 35,
   status: 'agendado',
+  payment_method: null,
   notes: null,
 });
+
+const PAYMENT_LABELS: Record<PaymentMethod, string> = {
+  dinheiro: 'Dinheiro',
+  pix: 'Pix',
+  debito: 'Cartão de débito',
+  credito: 'Cartão de crédito',
+  outro: 'Outro',
+};
 
 const defaultRecurrence: RecurrenceConfig = {
   frequency: 'weekly',
@@ -467,6 +477,21 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
                   />
                 </Field>
               </div>
+              <Field label="Forma de pagamento" hint="Opcional">
+                <Select
+                  value={form.payment_method ?? ''}
+                  onChange={(e) =>
+                    set({ payment_method: (e.target.value || null) as PaymentMethod | null })
+                  }
+                >
+                  <option value="">Não informado</option>
+                  {(Object.keys(PAYMENT_LABELS) as PaymentMethod[]).map((method) => (
+                    <option key={method} value={method}>
+                      {PAYMENT_LABELS[method]}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </FormSection>
 
             {/* Secao 5 - Extras */}
@@ -491,7 +516,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
               )}
 
               {isEdit && appointment?.is_recurring && (
-                <p className="rounded-xl bg-gold/10 px-4 py-2.5 text-xs text-gold">
+                <p className="rounded-xl border border-ink-200 bg-ink-50 px-4 py-2.5 text-xs text-ink-700">
                   Este agendamento faz parte de uma série recorrente. Ao salvar, você escolhe
                   aplicar só a ele ou a toda a série.
                 </p>
@@ -522,8 +547,8 @@ function FormSection({
   divider?: boolean;
 }) {
   return (
-    <section className={cn('space-y-4', divider && 'border-t border-ink-700/60 pt-6')}>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{title}</h3>
+    <section className={cn('space-y-4', divider && 'border-t border-ink-200 pt-6')}>
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">{title}</h3>
       {children}
     </section>
   );
@@ -541,12 +566,12 @@ function ConflictView({
   return (
     <div className="space-y-4">
       {error && <ErrorState message={error} />}
-      <div className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">
+      <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
         <AlertTriangle className="h-5 w-5 shrink-0" />
         <p className="text-sm font-medium">{BARBER_CONFLICT_MESSAGE}</p>
       </div>
 
-      <p className="text-xs text-zinc-400">
+      <p className="text-xs text-ink-600">
         Os horários abaixo já possuem atendimento e <strong>não serão sobrescritos</strong>:
       </p>
 
@@ -554,7 +579,7 @@ function ConflictView({
         {conflicts.map((c, i) => (
           <li
             key={`${c.date}-${i}`}
-            className="flex items-center gap-2.5 rounded-lg bg-ink-900 px-3 py-2.5 text-sm text-zinc-300"
+            className="flex items-center gap-2.5 rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-700"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
             {formatDateFull(c.date)} às {formatTime(c.time)}
@@ -562,7 +587,7 @@ function ConflictView({
         ))}
       </ul>
 
-      <p className="rounded-xl bg-gold/10 px-4 py-2.5 text-sm text-gold">
+      <p className="rounded-xl border border-ink-200 bg-ink-50 px-4 py-2.5 text-sm text-ink-700">
         {freeCount > 0
           ? `${freeCount} horário(s) livre(s) serão criados.`
           : 'Nenhum horário livre restante.'}

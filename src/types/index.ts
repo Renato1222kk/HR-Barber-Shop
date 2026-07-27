@@ -1,4 +1,7 @@
 // Tipos centrais do dominio - HR Barber Shop
+//
+// Sao os tipos usados pela interface. O formato das tabelas do banco fica
+// em `src/types/database.ts`; os services fazem a ponte entre os dois.
 
 export type AppointmentStatus =
   | 'agendado'
@@ -7,10 +10,13 @@ export type AppointmentStatus =
   | 'concluido'
   | 'cancelado';
 
+export type PaymentMethod = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'outro';
+
 export interface Client {
   id: string;
   name: string;
   whatsapp: string;
+  email: string | null;
   birth_date: string | null;
   notes: string | null;
   created_at: string;
@@ -52,6 +58,7 @@ export interface Appointment {
   duration_minutes: number;
   price: number;
   status: AppointmentStatus;
+  payment_method: PaymentMethod | null;
   notes: string | null;
   created_at: string;
   // Recorrencia (opcionais p/ manter compatibilidade com agendamento unico)
@@ -103,13 +110,42 @@ export interface WorkingHour {
   break_end: string | null;
 }
 
+/**
+ * O aplicativo tem um unico tema oficial (claro). `dark` e `gold` continuam
+ * no tipo apenas para nao quebrar linhas antigas gravadas no Supabase.
+ */
+export type AppTheme = 'light' | 'dark' | 'gold';
+
 export interface Settings {
   business_name: string;
   owner_name: string;
   whatsapp: string;
+  address: string;
   interval_minutes: number;
-  theme: 'dark' | 'gold';
+  theme: AppTheme;
 }
+
+// ===================== FINANCEIRO =====================
+/**
+ * Lancamento manual de caixa. O faturamento dos atendimentos continua
+ * saindo dos agendamentos concluidos; esta tabela cobre o que nao passa
+ * pela agenda (venda de produtos, aluguel, insumos...).
+ */
+export type FinancialEntryType = 'income' | 'expense';
+
+export interface FinancialEntry {
+  id: string;
+  appointment_id: string | null;
+  type: FinancialEntryType;
+  category: string;
+  description: string;
+  amount: number;
+  payment_method: PaymentMethod | null;
+  occurred_at: string; // YYYY-MM-DD
+  created_at: string;
+}
+
+export type FinancialEntryInput = Omit<FinancialEntry, 'id' | 'created_at'>;
 
 // Cliente enriquecido para listagens
 export interface ClientWithStats extends Client {

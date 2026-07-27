@@ -1,17 +1,11 @@
 'use client';
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import { AppointmentModal } from '@/components/agenda/AppointmentModal';
+import { useRealtimeSync } from '@/hooks/use-realtime';
 
 interface ShellContextValue {
   openNewAppointment: (opts?: { date?: string; time?: string }) => void;
@@ -37,16 +31,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
-  // Registra o service worker (PWA).
-  useEffect(() => {
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-  }, []);
+  // Canal unico de realtime do app: agenda, dashboard e financeiro se
+  // atualizam sozinhos quando algo muda em outro aparelho.
+  useRealtimeSync(true);
 
   return (
     <ShellContext.Provider value={{ openNewAppointment }}>
-      <div className="min-h-dvh bg-ink-950">
+      <div className="min-h-dvh bg-ink-50">
         <Sidebar open={menuOpen} onClose={closeMenu} />
         <div className="lg:pl-64">
           <Header onNew={() => openNewAppointment()} onOpenMenu={() => setMenuOpen(true)} />

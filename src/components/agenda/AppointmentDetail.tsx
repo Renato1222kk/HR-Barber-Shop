@@ -23,10 +23,10 @@ import { formatCurrency, formatDateFull, formatTime } from '@/lib/utils/format';
 import { errorMessage } from '@/lib/utils/error';
 import { confirmationMessage } from '@/lib/utils/whatsapp';
 import {
-  deleteAppointment,
-  deleteAppointmentSeries,
+  removeAppointment,
+  removeAppointmentSeries,
   updateAppointment,
-} from '@/lib/data/repository';
+} from '@/services';
 import { emitDataChanged } from '@/lib/events';
 import type { Appointment, AppointmentStatus, EditScope } from '@/types';
 
@@ -63,11 +63,15 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
 
   const handleDelete = async () => {
     setBusy(true);
+    setError(null);
     try {
-      await deleteAppointment(a.id);
+      await removeAppointment(a.id);
       emitDataChanged();
       setConfirming(false);
       onClose();
+    } catch (e) {
+      setError(errorMessage(e, 'Não foi possível excluir o agendamento.'));
+      setConfirming(false);
     } finally {
       setBusy(false);
     }
@@ -75,15 +79,19 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
 
   const handleDeleteScope = async (scope: EditScope) => {
     setBusy(true);
+    setError(null);
     try {
       if (scope === 'series' && a.recurring_group_id) {
-        await deleteAppointmentSeries(a.recurring_group_id);
+        await removeAppointmentSeries(a.recurring_group_id);
       } else {
-        await deleteAppointment(a.id);
+        await removeAppointment(a.id);
       }
       emitDataChanged();
       setScopeOpen(false);
       onClose();
+    } catch (e) {
+      setError(errorMessage(e, 'Não foi possível excluir o agendamento.'));
+      setScopeOpen(false);
     } finally {
       setBusy(false);
     }
@@ -97,11 +105,11 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
         <div className="space-y-5">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white">{a.client_name}</h3>
+              <h3 className="text-lg font-semibold text-ink-900">{a.client_name}</h3>
               <div className="flex items-center gap-2">
-                <p className="text-sm text-gold">{formatCurrency(a.price)}</p>
+                <p className="text-sm font-semibold text-ink-900">{formatCurrency(a.price)}</p>
                 {isRecurring && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-medium text-gold">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-gold-200 bg-gold-50 px-2 py-0.5 text-[10px] font-medium text-gold-700">
                     <Repeat className="h-3 w-3" /> Recorrente
                   </span>
                 )}
@@ -120,7 +128,7 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
 
           {error && <ErrorState message={error} />}
 
-          <div className="space-y-2.5 rounded-xl bg-ink-900 p-4 text-sm">
+          <div className="space-y-2.5 rounded-xl border border-ink-200 bg-ink-50 p-4 text-sm">
             <Row icon={Scissors} label={a.service_name} />
             {a.barber_name && <Row icon={UserCog} label={a.barber_name} />}
             <Row icon={Calendar} label={formatDateFull(a.date)} />
@@ -133,7 +141,7 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
 
           {/* Mudar status */}
           <div>
-            <p className="mb-2 text-xs font-medium text-zinc-400">Alterar status</p>
+            <p className="mb-2 text-xs font-medium text-ink-600">Alterar status</p>
             <div className="flex flex-wrap gap-2">
               {STATUS_ORDER.map((s) => {
                 const active = s === a.status;
@@ -146,7 +154,7 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
                       'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50',
                       active
                         ? STATUS_META[s].badge
-                        : 'border-ink-600 text-zinc-400 hover:border-ink-500 hover:text-white'
+                        : 'border-ink-200 text-ink-600 hover:border-ink-300 hover:text-ink-900'
                     )}
                   >
                     {STATUS_META[s].label}
@@ -208,8 +216,8 @@ export function AppointmentDetail({ appointment: a, onClose, onEdit }: Props) {
 
 function Row({ icon: Icon, label }: { icon: typeof Clock; label: string }) {
   return (
-    <div className="flex items-center gap-2.5 text-zinc-300">
-      <Icon className="h-4 w-4 shrink-0 text-zinc-500" />
+    <div className="flex items-center gap-2.5 text-ink-700">
+      <Icon className="h-4 w-4 shrink-0 text-ink-500" />
       <span>{label}</span>
     </div>
   );

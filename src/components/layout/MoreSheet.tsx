@@ -26,29 +26,29 @@ export function MoreSheet({ open, onClose }: { open: boolean; onClose: () => voi
               key={item.href}
               onClick={() => go(item.href)}
               className={cn(
-                'flex w-full items-center gap-3.5 rounded-xl border bg-ink-900 px-4 py-3.5 text-left transition-colors',
+                'flex w-full items-center gap-3.5 rounded-xl border bg-white px-4 py-3.5 text-left transition-colors',
                 active
-                  ? 'border-gold/50 bg-gold/5'
-                  : 'border-ink-700/60 hover:border-ink-600 hover:bg-ink-800'
+                  ? 'border-ink-300 bg-ink-50'
+                  : 'border-ink-200 hover:border-ink-300 hover:bg-ink-50'
               )}
             >
               <div
                 className={cn(
                   'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
-                  active ? 'bg-gold/20 text-gold' : 'bg-ink-700 text-zinc-300'
+                  active ? 'bg-ink-950 text-white' : 'bg-ink-100 text-ink-600'
                 )}
               >
                 <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className={cn('text-sm font-semibold', active ? 'text-gold' : 'text-white')}>
+                <p className="text-sm font-semibold text-ink-900">
                   {item.label}
                 </p>
                 {item.description && (
-                  <p className="truncate text-xs text-zinc-500">{item.description}</p>
+                  <p className="truncate text-xs text-ink-500">{item.description}</p>
                 )}
               </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-zinc-600" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-ink-400" />
             </button>
           );
         })}

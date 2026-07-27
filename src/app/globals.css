@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
@@ -12,7 +12,7 @@ body {
 }
 
 body {
-  @apply bg-ink-950 text-zinc-200 antialiased;
+  @apply bg-ink-50 text-ink-900 antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
@@ -20,22 +20,18 @@ body {
 /* Scrollbar discreta */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #33333a transparent;
+  scrollbar-color: #d1d5db transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #33333a;
+  background: #d1d5db;
   border-radius: 999px;
 }
-
-/* Inputs de data/hora no tema escuro */
-input[type='date']::-webkit-calendar-picker-indicator,
-input[type='time']::-webkit-calendar-picker-indicator {
-  filter: invert(0.7);
-  cursor: pointer;
+*::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 
 /* Suporte a altura dinamica (mobile) */

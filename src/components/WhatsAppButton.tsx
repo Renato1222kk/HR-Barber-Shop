@@ -30,11 +30,11 @@ export function WhatsAppButton({
         aria-label="Enviar WhatsApp"
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          'inline-flex h-9 w-9 items-center justify-center rounded-lg bg-green-500/15 text-green-400 transition-colors hover:bg-green-500/25',
+          'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-green-200 bg-green-50 text-green-600 transition-colors hover:bg-green-100 hover:text-green-700',
           className
         )}
       >
-        <MessageCircle className="h-4.5 w-4.5" />
+        <MessageCircle className="h-[18px] w-[18px]" />
       </a>
     );
   }
@@ -46,7 +46,7 @@ export function WhatsAppButton({
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        'inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-500/90 px-4 text-sm font-semibold text-white transition-colors hover:bg-green-500',
+        'inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-green-700',
         className
       )}
     >

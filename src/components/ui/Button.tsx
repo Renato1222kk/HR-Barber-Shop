@@ -14,14 +14,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
+  // Preto de destaque com texto branco — a acao principal do tema claro.
   primary:
-    'bg-gold text-ink-950 font-semibold hover:bg-gold-400 active:bg-gold-600 shadow-gold disabled:opacity-50',
+    'bg-ink-950 text-white font-semibold hover:bg-ink-800 active:bg-ink-900 shadow-card disabled:opacity-40',
   secondary:
-    'bg-ink-700 text-white hover:bg-ink-600 active:bg-ink-500 disabled:opacity-50',
-  ghost: 'text-zinc-300 hover:bg-ink-700 hover:text-white disabled:opacity-50',
-  danger: 'bg-red-500/90 text-white hover:bg-red-500 disabled:opacity-50',
+    'border border-ink-200 bg-white text-ink-900 hover:bg-ink-100 active:bg-ink-200 disabled:opacity-40',
+  ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900 disabled:opacity-40',
+  danger: 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 disabled:opacity-40',
   outline:
-    'border border-ink-600 text-zinc-200 hover:bg-ink-700 hover:border-ink-500 disabled:opacity-50',
+    'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100 hover:border-ink-300 disabled:opacity-40',
 };
 
 const sizes: Record<Size, string> = {
@@ -38,7 +39,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          'inline-flex items-center justify-center gap-2 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 select-none',
+          'inline-flex items-center justify-center gap-2 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-900/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white select-none disabled:cursor-not-allowed',
           variants[variant],
           sizes[size],
           className

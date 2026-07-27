@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { ErrorState } from '@/components/ui/Misc';
-import { createClient, updateClient } from '@/lib/data/repository';
+import { createClient, updateClient } from '@/services';
 import { errorMessage } from '@/lib/utils/error';
 import { emitDataChanged } from '@/lib/events';
 import type { Client, ClientInput } from '@/types';
@@ -16,7 +16,13 @@ interface Props {
   client?: Client | null;
 }
 
-const empty: ClientInput = { name: '', whatsapp: '', birth_date: null, notes: null };
+const empty: ClientInput = {
+  name: '',
+  whatsapp: '',
+  email: null,
+  birth_date: null,
+  notes: null,
+};
 
 export function ClientModal({ open, onClose, client }: Props) {
   const isEdit = Boolean(client);
@@ -87,6 +93,14 @@ export function ClientModal({ open, onClose, client }: Props) {
             placeholder="11988887777"
             value={form.whatsapp}
             onChange={(e) => set({ whatsapp: e.target.value })}
+          />
+        </Field>
+        <Field label="E-mail" hint="Opcional">
+          <Input
+            type="email"
+            placeholder="cliente@email.com"
+            value={form.email ?? ''}
+            onChange={(e) => set({ email: e.target.value || null })}
           />
         </Field>
         <Field label="Data de nascimento">

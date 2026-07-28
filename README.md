@@ -150,7 +150,8 @@ npm run dev
 ```
 
 Abra <http://localhost:3000>. Sem sessão, você cai em
-<http://localhost:3000/login>.
+<http://localhost:3000/login>; com sessão, a entrada é a agenda
+(<http://localhost:3000/agenda>).
 
 Outros comandos:
 
@@ -207,8 +208,8 @@ Para conferir no painel: **Database → Publications → supabase_realtime**.
 As duas tabelas devem estar marcadas.
 
 Com isso, criar ou alterar um agendamento em um aparelho atualiza a
-agenda, os próximos atendimentos, o dashboard e o financeiro nos demais,
-sem recarregar a página.
+agenda, os clientes, o financeiro e os insights nos demais, sem
+recarregar a página.
 
 ---
 
@@ -222,9 +223,9 @@ sem recarregar a página.
   `using (true)`.
 - O navegador recebe apenas a chave publishable. Chaves administrativas,
   senha do banco e connection string nunca entram no código.
-- As rotas privadas (`/dashboard`, `/agenda`, `/clientes`, `/barbeiros`,
+- As rotas privadas (`/agenda`, `/clientes`, `/barbeiros`,
   `/servicos`, `/financeiro`, `/insights`, `/configuracoes`) passam por
-  duas barreiras: o `middleware.ts` e a checagem de sessão no layout do
+  duas barreiras: o `src/middleware.ts` e a checagem de sessão no layout do
   grupo `(app)`.
 - **Conflito de horário** é garantido no banco por uma constraint de
   exclusão (`appointments_no_barber_overlap`), não só na tela. Se duas
@@ -261,7 +262,6 @@ aparecer. O cartão só existe enquanto houver dados antigos.
 ## Estrutura do projeto
 
 ```
-middleware.ts               Renova a sessão e protege as rotas privadas
 supabase/
   schema.sql                Schema completo (tabelas, RLS, triggers, realtime)
   seed.sql                  Dados de teste opcionais
@@ -270,11 +270,12 @@ public/
   icons/                    Ícones do PWA (fundo branco)
   manifest.webmanifest      Manifesto de instalação
 src/
+  middleware.ts             Renova a sessão e protege as rotas privadas
   app/                      Rotas (App Router)
   components/               Interface
   hooks/use-realtime.ts     Assinatura do Realtime
   lib/supabase/             client / server / middleware / validação do env
-  lib/data/analytics.ts     Dashboard, financeiro e insights (cálculos)
+  lib/data/analytics.ts     Financeiro, clientes e insights (cálculos)
   lib/data/migrate-demo.ts  Importador único do localStorage antigo
   services/                 Acesso ao banco (list/getById/create/update/remove)
   types/                    Tipos do domínio e do banco
@@ -298,6 +299,17 @@ Nenhum componente chama `.from()` direto: todo acesso ao banco passa por
 O faturamento considera **apenas atendimentos concluídos** e os
 lançamentos financeiros registrados. Agendamento cancelado nunca entra
 como receita.
+
+Todo agendamento novo nasce como `agendado`: o status não é escolhido no
+formulário, muda pelos botões da tela de detalhes do atendimento
+(confirmar, iniciar, concluir, cancelar).
+
+O sistema atende **um único barbeiro**, então o formulário também não
+pede essa escolha: `barber_id` e `barber_name` são preenchidos com o
+primeiro barbeiro ativo (ordem por `created_at`). Sem nenhum barbeiro
+ativo cadastrado o agendamento não é gravado — a tela pede o cadastro em
+`/barbeiros`. Na edição, o barbeiro já vinculado ao agendamento é
+mantido.
 
 ---
 

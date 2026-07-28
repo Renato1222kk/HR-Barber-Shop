@@ -11,6 +11,7 @@ import { ErrorState, Spinner } from '@/components/ui/Misc';
 import { ConfigNotice } from '@/components/ui/ConfigNotice';
 import { LogoMark } from '@/components/brand/Logo';
 import { BRAND } from '@/lib/constants';
+import { safeRedirectPath } from '@/lib/utils/routes';
 
 /** Mensagens vindas do link de e-mail (rota /auth/callback). */
 const CALLBACK_ERRORS: Record<string, string> = {
@@ -32,7 +33,8 @@ function LoginForm() {
     () => CALLBACK_ERRORS[searchParams.get('erro') ?? ''] ?? null
   );
 
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  // Endereco antigo (`/dashboard`) e links externos viram a rota principal.
+  const redirectTo = safeRedirectPath(searchParams.get('redirect'));
 
   // Quem já tem sessão não vê a tela de login.
   useEffect(() => {
@@ -40,7 +42,7 @@ function LoginForm() {
   }, [user, loading, router, redirectTo]);
 
   // Enquanto a sessão é lida (ou o redirecionamento acontece), mostra só o
-  // indicador: evita a tela piscar entre login e dashboard.
+  // indicador: evita a tela piscar entre o login e a agenda.
   if (loading || user) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-5 bg-ink-50">

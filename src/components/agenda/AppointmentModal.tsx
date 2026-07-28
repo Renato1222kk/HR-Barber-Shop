@@ -9,16 +9,16 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { ErrorState } from '@/components/ui/Misc';
 import { ScopeDialog } from '@/components/ui/ScopeDialog';
 import { RecurrenceSection } from './RecurrenceSection';
-import { STATUS_ORDER, STATUS_META } from '@/lib/constants';
 import { addMinutes, parseDate, toISODate, formatDateFull, formatTime } from '@/lib/utils/format';
 import { errorMessage } from '@/lib/utils/error';
 import { generateRecurringDates, findConflicts } from '@/lib/utils/recurrence';
 import {
   BARBER_CONFLICT_MESSAGE,
+  NO_ACTIVE_BARBER_MESSAGE,
   createAppointment,
   createRecurringAppointments,
+  getDefaultBarber,
   listAppointments,
-  listBarbers,
   listClients,
   listServices,
   updateAppointment,
@@ -93,7 +93,9 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
   );
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [barbers, setBarbers] = useState<Barber[]>([]);
+  // Barbeiro padrao: definido automaticamente, sem seletor na tela.
+  const [defaultBarber, setDefaultBarber] = useState<Barber | null>(null);
+  const [loadingBarber, setLoadingBarber] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,7 +116,11 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
     setRec(defaultRecurrence);
     listClients().then(setClients).catch(() => setClients([]));
     listServices().then(setServices).catch(() => setServices([]));
-    listBarbers().then(setBarbers).catch(() => setBarbers([]));
+    setLoadingBarber(true);
+    getDefaultBarber()
+      .then(setDefaultBarber)
+      .catch(() => setDefaultBarber(null))
+      .finally(() => setLoadingBarber(false));
     if (appointment) {
       const { id, created_at, ...rest } = appointment;
       setForm(rest);
@@ -123,14 +129,20 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
     }
   }, [open, appointment, defaultDate, defaultTime]);
 
+  // Preenche o barbeiro sem perguntar nada ao usuario. Na edicao o vinculo
+  // original e preservado: o padrao so entra quando nao ha barbeiro algum.
+  useEffect(() => {
+    if (!open || !defaultBarber) return;
+    setForm((f) =>
+      f.barber_id
+        ? f
+        : { ...f, barber_id: defaultBarber.id, barber_name: defaultBarber.name }
+    );
+  }, [open, appointment, defaultBarber]);
+
   const activeServices = useMemo(
     () => services.filter((s) => s.active || s.id === form.service_id),
     [services, form.service_id]
-  );
-
-  const activeBarbers = useMemo(
-    () => barbers.filter((b) => b.active || b.id === form.barber_id),
-    [barbers, form.barber_id]
   );
 
   // Previa da recorrencia (recalcula ao mudar config / data / horario).
@@ -163,11 +175,6 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
       price: svc.price,
       end_time: addMinutes(form.start_time, svc.duration_minutes),
     });
-  };
-
-  const onSelectBarber = (barberId: string) => {
-    const barber = barbers.find((b) => b.id === barberId);
-    set({ barber_id: barber?.id ?? null, barber_name: barber?.name ?? '' });
   };
 
   const onSelectClientName = (name: string) => {
@@ -206,8 +213,10 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
       setError('Selecione um serviço.');
       return false;
     }
+    // O barbeiro e definido automaticamente; sem nenhum ativo nao ha como
+    // gravar (a coluna e obrigatoria para a regra de conflito).
     if (!form.barber_id) {
-      setError('Selecione um barbeiro.');
+      setError(NO_ACTIVE_BARBER_MESSAGE);
       return false;
     }
     return true;
@@ -339,7 +348,12 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
               <Button variant="secondary" className="flex-1" onClick={onClose} disabled={saving}>
                 Cancelar
               </Button>
-              <Button className="flex-1" onClick={handleSubmit} loading={saving}>
+              <Button
+                className="flex-1"
+                onClick={handleSubmit}
+                loading={saving}
+                disabled={loadingBarber}
+              >
                 {isEdit
                   ? 'Salvar'
                   : recurrenceOn
@@ -395,33 +409,6 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
                   {activeServices.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} — {s.duration_minutes} min — R$ {s.price}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field label="Barbeiro">
-                <Select
-                  value={form.barber_id ?? ''}
-                  onChange={(e) => onSelectBarber(e.target.value)}
-                >
-                  <option value="">Selecione um barbeiro</option>
-                  {activeBarbers.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field label="Status">
-                <Select
-                  value={form.status}
-                  onChange={(e) => set({ status: e.target.value as AppointmentInput['status'] })}
-                >
-                  {STATUS_ORDER.map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_META[s].label}
                     </option>
                   ))}
                 </Select>

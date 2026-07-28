@@ -12,8 +12,10 @@ export {
 } from './base';
 
 export {
+  NO_ACTIVE_BARBER_MESSAGE,
   listBarbers,
   getBarberById,
+  getDefaultBarber,
   createBarber,
   updateBarber,
   removeBarber,

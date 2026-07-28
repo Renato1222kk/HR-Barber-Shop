@@ -8,8 +8,8 @@ import { emitDataChanged } from '@/lib/events';
  * Assina as mudancas em tempo real das tabelas que a interface acompanha.
  *
  * Qualquer INSERT / UPDATE / DELETE feito em outro aparelho dispara
- * `emitDataChanged()`, e todas as telas montadas (agenda, dashboard,
- * proximos atendimentos, financeiro) recarregam sozinhas.
+ * `emitDataChanged()`, e todas as telas montadas (agenda, clientes,
+ * financeiro, insights) recarregam sozinhas.
  *
  * Monta um unico canal por sessao — o hook e usado apenas no AppShell —
  * e o remove no unmount para nao acumular inscricoes.

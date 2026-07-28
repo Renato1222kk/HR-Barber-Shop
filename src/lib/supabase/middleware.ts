@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import type { Database } from '@/types/database';
+import { HOME_ROUTE } from '@/lib/constants';
 import { readSupabaseEnv } from './env';
 
 /** Rotas administrativas: exigem sessao valida. */
 const PRIVATE_ROUTES = [
-  '/dashboard',
   '/agenda',
   '/clientes',
   '/barbeiros',
@@ -69,7 +69,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
 
   if (user && matches(pathname, AUTH_ROUTES)) {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = HOME_ROUTE;
     url.search = '';
     return NextResponse.redirect(url);
   }

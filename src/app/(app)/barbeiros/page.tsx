@@ -27,6 +27,7 @@ export default function BarbeirosPage() {
   const barbersQ = useAsync(() => listBarbers(), []);
   const apptsQ = useAsync(() => listAppointments(), []);
   const barbers = barbersQ.data ?? [];
+  const activeCount = barbers.filter((b) => b.active).length;
 
   const performance = useMemo(() => {
     const map = new Map<string, { total: number; completed: number; revenue: number }>();
@@ -64,7 +65,8 @@ export default function BarbeirosPage() {
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-ink-500">
-          {barbers.filter((b) => b.active).length} ativos · {barbers.length} no total
+          {activeCount === 1 ? '1 barbeiro ativo' : `${activeCount} barbeiros ativos`} ·{' '}
+          {barbers.length} no total
         </p>
         <Button onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo barbeiro</span>
@@ -82,10 +84,10 @@ export default function BarbeirosPage() {
         <EmptyState
           icon={UserCog}
           title="Nenhum barbeiro cadastrado"
-          description="Cadastre a equipe da barbearia para organizar a agenda."
+          description="Cadastre o barbeiro ativo: os agendamentos são vinculados a ele automaticamente."
           action={
             <Button onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" /> Novo barbeiro
+              <Plus className="h-4 w-4" /> Cadastrar barbeiro
             </Button>
           }
         />

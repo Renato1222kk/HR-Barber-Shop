@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
-  // Canal unico de realtime do app: agenda, dashboard e financeiro se
+  // Canal unico de realtime do app: agenda, clientes e financeiro se
   // atualizam sozinhos quando algo muda em outro aparelho.
   useRealtimeSync(true);
 

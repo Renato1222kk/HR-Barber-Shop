@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { safeRedirectPath } from '@/lib/utils/routes';
 
 /**
  * Destino dos links enviados por e-mail pelo Supabase (recuperacao de
@@ -9,9 +10,8 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/dashboard';
   // Aceita apenas caminhos internos: evita redirecionamento para fora do app.
-  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+  const safeNext = safeRedirectPath(searchParams.get('next'));
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?erro=link-invalido`);

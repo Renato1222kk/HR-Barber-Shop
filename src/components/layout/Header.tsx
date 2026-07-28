@@ -21,6 +21,10 @@ export function Header({ onNew, onOpenMenu }: HeaderProps) {
   const title =
     TITLES[pathname] || NAV_ITEMS.find((i) => pathname.startsWith(i.href))?.label || BRAND.name;
 
+  // A agenda tem o proprio botao (que ja leva a data em foco): aqui ele
+  // sairia duplicado na mesma tela.
+  const hideNew = pathname === '/agenda' || pathname.startsWith('/agenda/');
+
   return (
     <header className="sticky top-0 z-20 border-b border-ink-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70">
       <div className="flex h-16 items-center justify-between gap-3 px-4 lg:px-8">
@@ -40,13 +44,15 @@ export function Header({ onNew, onOpenMenu }: HeaderProps) {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
-          <Button onClick={onNew} className="hidden sm:inline-flex">
-            <Plus className="h-4 w-4" />
-            <span className="hidden lg:inline">Novo agendamento</span>
-            <span className="lg:hidden">Novo</span>
-          </Button>
-        </div>
+        {!hideNew && (
+          <div className="flex shrink-0 items-center gap-3">
+            <Button onClick={onNew} className="hidden sm:inline-flex">
+              <Plus className="h-4 w-4" />
+              <span className="hidden lg:inline">Novo agendamento</span>
+              <span className="lg:hidden">Novo</span>
+            </Button>
+          </div>
+        )}
       </div>
     </header>
   );

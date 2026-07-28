@@ -11,7 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
-import { listAppointments, listBarbers } from '@/services';
+import { listAppointments } from '@/services';
 import { cn } from '@/lib/utils/cn';
 import { toISODate, formatCurrency, capitalize } from '@/lib/utils/format';
 import { WEEKDAYS, WEEKDAYS_SHORT, STATUS_META, STATUS_ORDER } from '@/lib/constants';
@@ -37,29 +37,24 @@ export default function AgendaPage() {
 
   // Filtros
   const [query, setQuery] = useState('');
-  const [barberId, setBarberId] = useState('');
   const [status, setStatus] = useState<AppointmentStatus | ''>('');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data, loading, error } = useAsync(() => listAppointments(), []);
-  const barbersQ = useAsync(() => listBarbers(), []);
-  const barbers = barbersQ.data ?? [];
 
   const appointments = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (data ?? []).filter((a) => {
-      if (barberId && a.barber_id !== barberId) return false;
       if (status && a.status !== status) return false;
       if (q && !a.client_name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [data, query, barberId, status]);
+  }, [data, query, status]);
 
-  const activeFilters = (barberId ? 1 : 0) + (status ? 1 : 0) + (query.trim() ? 1 : 0);
+  const activeFilters = (status ? 1 : 0) + (query.trim() ? 1 : 0);
 
   const clearFilters = () => {
     setQuery('');
-    setBarberId('');
     setStatus('');
   };
 
@@ -132,7 +127,8 @@ export default function AgendaPage() {
             className="hidden sm:inline-flex"
           >
             <Plus className="h-4 w-4" />
-            Novo
+            <span className="hidden lg:inline">Novo agendamento</span>
+            <span className="lg:hidden">Novo</span>
           </Button>
         </div>
       </div>
@@ -149,27 +145,17 @@ export default function AgendaPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Select value={barberId} onChange={(e) => setBarberId(e.target.value)}>
-              <option value="">Todos os barbeiros</option>
-              {barbers.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </Select>
-            <Select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as AppointmentStatus | '')}
-            >
-              <option value="">Todos os status</option>
-              {STATUS_ORDER.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_META[s].label}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <Select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as AppointmentStatus | '')}
+          >
+            <option value="">Todos os status</option>
+            {STATUS_ORDER.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_META[s].label}
+              </option>
+            ))}
+          </Select>
           {activeFilters > 0 && (
             <button
               onClick={clearFilters}

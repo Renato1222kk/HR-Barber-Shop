@@ -5,7 +5,7 @@ import type {
   ClientWithStats,
   FinancialEntry,
 } from '@/types';
-import { parseDate, toISODate, timeToMinutes } from '@/lib/utils/format';
+import { parseDate, toISODate } from '@/lib/utils/format';
 import { WEEKDAYS } from '@/lib/constants';
 
 // Somente atendimentos concluidos entram no faturamento.
@@ -79,74 +79,6 @@ export function buildTopServices(
     .map(([label, v]) => ({ label, ...v }))
     .sort((a, b) => b.value - a.value)
     .slice(0, limit);
-}
-
-// =====================================================================
-// DASHBOARD
-// =====================================================================
-export interface DashboardSummary {
-  todayCount: number;
-  todayCompleted: number;
-  todayPending: number;
-  todayCancelled: number;
-  todayRevenue: number;
-  todayExpectedRevenue: number;
-  monthRevenue: number;
-  freeSlots: number;
-  todayList: Appointment[];
-  upcoming: Appointment[];
-  topServices: { label: string; value: number; revenue: number }[];
-  barbers: BarberPerformance[];
-}
-
-export function buildDashboard(
-  appointments: Appointment[],
-  ref: Date,
-  opts: { dayStart?: string; dayEnd?: string; avgDuration?: number } = {}
-): DashboardSummary {
-  const todayISO = toISODate(ref);
-  const todayAll = appointments
-    .filter((a) => a.date === todayISO)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
-
-  const active = todayAll.filter((a) => a.status !== 'cancelado');
-  const completed = todayAll.filter((a) => a.status === 'concluido');
-  const pending = todayAll.filter((a) => PENDING.includes(a.status));
-  const cancelled = todayAll.filter((a) => a.status === 'cancelado');
-
-  const nowMin = ref.getHours() * 60 + ref.getMinutes();
-  const upcoming = todayAll
-    .filter((a) => PENDING.includes(a.status) && timeToMinutes(a.start_time) >= nowMin)
-    .slice(0, 5);
-
-  // Estimativa de horarios livres no dia.
-  const dayStart = timeToMinutes(opts.dayStart ?? '09:00');
-  const dayEnd = timeToMinutes(opts.dayEnd ?? '19:00');
-  const avg = opts.avgDuration ?? 40;
-  const totalSlots = Math.max(0, Math.floor((dayEnd - dayStart) / avg));
-  const freeSlots = Math.max(0, totalSlots - active.length);
-
-  const monthRevenue = revenue(
-    appointments.filter((a) => inMonth(a.date, ref) && REALIZED.includes(a.status))
-  );
-
-  return {
-    todayCount: todayAll.length,
-    todayCompleted: completed.length,
-    todayPending: pending.length,
-    todayCancelled: cancelled.length,
-    todayRevenue: revenue(completed),
-    todayExpectedRevenue: revenue(active),
-    monthRevenue,
-    freeSlots,
-    todayList: active,
-    upcoming,
-    topServices: buildTopServices(
-      appointments.filter((a) => inMonth(a.date, ref)),
-      5
-    ),
-    barbers: buildBarberPerformance(appointments.filter((a) => inMonth(a.date, ref))),
-  };
 }
 
 // =====================================================================

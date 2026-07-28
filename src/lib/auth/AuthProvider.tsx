@@ -32,7 +32,7 @@ interface AuthResult {
 
 interface AuthContextValue {
   user: AuthUser | null;
-  /** true ate a sessao inicial ser lida — evita piscar entre login e dashboard. */
+  /** true ate a sessao inicial ser lida — evita piscar entre login e agenda. */
   loading: boolean;
   /** Mensagem de configuracao quando faltam as variaveis do Supabase. */
   configError: string | null;

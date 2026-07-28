@@ -3,7 +3,7 @@
   "short_name": "HR Barber",
   "description": "Sistema de gestão e agendamentos da HR Barber Shop.",
   "id": "/",
-  "start_url": "/dashboard",
+  "start_url": "/agenda",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],

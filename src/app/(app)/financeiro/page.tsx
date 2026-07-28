@@ -22,7 +22,7 @@ import { buildEntriesSummary, buildFinance } from '@/lib/data/analytics';
 import { formatCurrency, formatDateShort } from '@/lib/utils/format';
 import { errorMessage } from '@/lib/utils/error';
 import { STATUS_META } from '@/lib/constants';
-import { StatCard } from '@/components/dashboard/StatCard';
+import { StatCard } from '@/components/ui/StatCard';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/Misc';

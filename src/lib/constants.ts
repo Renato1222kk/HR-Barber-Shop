@@ -13,6 +13,9 @@ export const BRAND = {
 /** Fuso usado em toda a agenda — a barbearia opera em um único horário. */
 export const TIMEZONE = 'America/Sao_Paulo';
 
+/** Rota principal do app: é para onde vai quem acabou de entrar. */
+export const HOME_ROUTE = '/agenda';
+
 export const STATUS_META: Record<
   AppointmentStatus,
   { label: string; color: string; dot: string; badge: string; bar: string }

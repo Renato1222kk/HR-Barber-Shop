@@ -10,7 +10,7 @@ import { Field, Input } from '@/components/ui/Field';
 import { ErrorState, Spinner } from '@/components/ui/Misc';
 import { ConfigNotice } from '@/components/ui/ConfigNotice';
 import { LogoMark } from '@/components/brand/Logo';
-import { BRAND } from '@/lib/constants';
+import { BRAND, HOME_ROUTE } from '@/lib/constants';
 
 const MIN_LENGTH = 6;
 
@@ -42,7 +42,7 @@ export default function RedefinirSenhaPage() {
       setError(result.error);
       return;
     }
-    router.replace('/dashboard');
+    router.replace(HOME_ROUTE);
   };
 
   return (

@@ -7,7 +7,7 @@
  * Ao mudar qualquer regra deste arquivo, suba a VERSION: os caches antigos
  * sao apagados no `activate`, entao a atualizacao chega sozinha.
  */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL_CACHE = `hr-barber-shell-${VERSION}`;
 const PAGES_CACHE = `hr-barber-pages-${VERSION}`;
 const ASSETS_CACHE = `hr-barber-assets-${VERSION}`;

@@ -6,6 +6,10 @@ import { db, requireOwnerId, run, toHHmm } from './base';
 
 const COLUMNS = 'id, name, phone, specialty, active, work_start, work_end, created_at';
 
+/** Mensagem exibida quando nao ha nenhum profissional ativo cadastrado. */
+export const NO_ACTIVE_BARBER_MESSAGE =
+  'Cadastre um barbeiro ativo antes de criar um agendamento.';
+
 type Row = Pick<
   Tables<'barbers'>,
   'id' | 'name' | 'phone' | 'specialty' | 'active' | 'work_start' | 'work_end' | 'created_at'
@@ -32,6 +36,25 @@ export async function listBarbers(): Promise<Barber[]> {
       .order('name', { ascending: true });
     if (error) throw error;
     return (data ?? []).map(toBarber);
+  });
+}
+
+/**
+ * Barbeiro usado automaticamente nos agendamentos. Como a barbearia opera
+ * com um unico profissional, a interface nao pede essa escolha: vale o
+ * primeiro barbeiro ativo, em ordem estavel por data de cadastro.
+ */
+export async function getDefaultBarber(): Promise<Barber | null> {
+  return run('Erro ao carregar o barbeiro.', async () => {
+    const { data, error } = await db()
+      .from('barbers')
+      .select(COLUMNS)
+      .eq('active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? toBarber(data) : null;
   });
 }
 

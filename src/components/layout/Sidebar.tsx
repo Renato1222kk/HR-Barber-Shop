@@ -52,7 +52,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         <div className="flex items-center justify-between border-b border-ink-100 px-5 py-5">
           <Link
-            href="/dashboard"
+            href="/agenda"
             aria-label={BRAND.name}
             className="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-900/20"
           >

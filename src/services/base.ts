@@ -6,9 +6,12 @@ import {
   type AppSupabaseClient,
 } from '@/lib/supabase/client';
 
-/** Mensagem unica de conflito de agenda, usada pela interface inteira. */
-export const BARBER_CONFLICT_MESSAGE =
-  'Este barbeiro já possui um atendimento nesse horário.';
+/**
+ * Mensagem unica de conflito de agenda, usada pela interface inteira.
+ * Com um unico profissional, citar o barbeiro so confunde: o que importa
+ * e que o horario ja esta ocupado.
+ */
+export const BARBER_CONFLICT_MESSAGE = 'Já existe um atendimento nesse horário.';
 
 export const SESSION_EXPIRED_MESSAGE =
   'Sua sessão expirou. Entre novamente para continuar.';

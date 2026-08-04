@@ -1,4 +1,27 @@
 // Formatadores de moeda, data e hora (pt-BR).
+//
+// A manipulacao de datas mora em `./date`. Aqui ficam apenas os
+// formatadores de exibicao; `parseDate`, `toISODate`, `addMinutes` e
+// `timeToMinutes` sao reexportados de la para que exista uma unica
+// implementacao no projeto.
+
+import {
+  addMinutesToTime,
+  formatLocalDate,
+  parseLocalDate,
+  timeToMinutes as timeToMinutesImpl,
+} from './date';
+
+/** "YYYY-MM-DD" -> Date local (sem passar por UTC). */
+export const parseDate = parseLocalDate;
+
+/** Date local -> "YYYY-MM-DD". */
+export const toISODate = formatLocalDate;
+
+/** Soma minutos a "HH:mm" -> "HH:mm" (gira apos a meia-noite). */
+export const addMinutes = addMinutesToTime;
+
+export const timeToMinutes = timeToMinutesImpl;
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
@@ -10,19 +33,6 @@ export function formatCurrency(value: number): string {
 export function formatCurrencyShort(value: number): string {
   if (value >= 1000) return `R$ ${(value / 1000).toFixed(1).replace('.', ',')}k`;
   return formatCurrency(value);
-}
-
-// Recebe "YYYY-MM-DD" e devolve Date local (evita shift de fuso).
-export function parseDate(iso: string): Date {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, (m || 1) - 1, d || 1);
-}
-
-export function toISODate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
 
 export function formatDateLong(iso: string): string {
@@ -58,18 +68,4 @@ export function daysSince(iso: string, today = new Date()): number {
 
 export function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-// Soma minutos a "HH:mm" -> "HH:mm"
-export function addMinutes(time: string, minutes: number): string {
-  const [h, m] = time.split(':').map(Number);
-  const total = h * 60 + m + minutes;
-  const hh = Math.floor((total % 1440) / 60);
-  const mm = total % 60;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-}
-
-export function timeToMinutes(time: string): number {
-  const [h, m] = time.split(':').map(Number);
-  return h * 60 + m;
 }

@@ -9,7 +9,16 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { ErrorState } from '@/components/ui/Misc';
 import { ScopeDialog } from '@/components/ui/ScopeDialog';
 import { RecurrenceSection } from './RecurrenceSection';
-import { addMinutes, parseDate, toISODate, formatDateFull, formatTime } from '@/lib/utils/format';
+import { formatDateFull, formatTime } from '@/lib/utils/format';
+import {
+  addDaysISO,
+  computeEndTime,
+  dateInputToDatabase,
+  formatTimeForDatabase,
+  isValidISODate,
+  parseLocalDate,
+  todayISO,
+} from '@/lib/utils/date';
 import { errorMessage } from '@/lib/utils/error';
 import { generateRecurringDates, findConflicts } from '@/lib/utils/recurrence';
 import {
@@ -45,6 +54,8 @@ interface Props {
   defaultTime?: string;
 }
 
+const DEFAULT_DURATION = 40;
+
 const empty = (date: string, time: string): AppointmentInput => ({
   client_id: null,
   service_id: null,
@@ -55,13 +66,26 @@ const empty = (date: string, time: string): AppointmentInput => ({
   barber_name: '',
   date,
   start_time: time,
-  end_time: addMinutes(time, 40),
-  duration_minutes: 40,
+  end_time: computeEndTime(time, DEFAULT_DURATION),
+  duration_minutes: DEFAULT_DURATION,
   price: 35,
   status: 'agendado',
   payment_method: null,
   notes: null,
 });
+
+/**
+ * Estado inicial de um agendamento novo.
+ *
+ * A data so cai para "hoje" quando a tela realmente nao informou nenhuma —
+ * e mesmo assim usando o fuso da barbearia, nunca o da maquina que
+ * renderiza. Uma data recebida da agenda e sempre respeitada.
+ */
+function initialForm(defaultDate?: string, defaultTime?: string): AppointmentInput {
+  const date = dateInputToDatabase(defaultDate) ?? todayISO();
+  const time = formatTimeForDatabase(defaultTime) ?? '09:00';
+  return empty(date, time);
+}
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   dinheiro: 'Dinheiro',
@@ -80,16 +104,12 @@ const defaultRecurrence: RecurrenceConfig = {
   occurrencesCount: 10,
 };
 
-function addDaysISO(iso: string, days: number): string {
-  const d = parseDate(iso);
-  d.setDate(d.getDate() + days);
-  return toISODate(d);
-}
-
 export function AppointmentModal({ open, onClose, appointment, defaultDate, defaultTime }: Props) {
   const isEdit = Boolean(appointment);
-  const [form, setForm] = useState<AppointmentInput>(
-    empty(defaultDate ?? toISODate(new Date()), defaultTime ?? '09:00')
+  // Inicializador preguicoso: sem ele, `todayISO()` seria avaliado a cada
+  // render do AppShell. O valor real e definido pelo efeito de abertura.
+  const [form, setForm] = useState<AppointmentInput>(() =>
+    initialForm(defaultDate, defaultTime)
   );
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -105,6 +125,13 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
   const [step, setStep] = useState<'form' | 'conflicts'>('form');
   const [conflicts, setConflicts] = useState<RecurringSlot[]>([]);
   const [scopeOpen, setScopeOpen] = useState(false);
+
+  // Identifica de forma estavel "qual agendamento este modal esta editando".
+  // O formulario so e recarregado quando o modal abre ou quando passa a
+  // editar outro registro. Sem isso, um refetch do Realtime trocaria a
+  // identidade do objeto `appointment` e apagaria o que o usuario acabou de
+  // digitar — inclusive a data escolhida.
+  const sessionKey = open ? `${appointment?.id ?? 'novo'}|${defaultDate ?? ''}|${defaultTime ?? ''}` : '';
 
   useEffect(() => {
     if (!open) return;
@@ -122,12 +149,17 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
       .catch(() => setDefaultBarber(null))
       .finally(() => setLoadingBarber(false));
     if (appointment) {
+      // Edicao: a data gravada no Supabase entra como esta e permanece ate
+      // que o usuario a troque. Nunca e substituida por hoje.
       const { id, created_at, ...rest } = appointment;
       setForm(rest);
     } else {
-      setForm(empty(defaultDate ?? toISODate(new Date()), defaultTime ?? '09:00'));
+      setForm(initialForm(defaultDate, defaultTime));
     }
-  }, [open, appointment, defaultDate, defaultTime]);
+    // `appointment` fora das dependencias de proposito: o que importa e a
+    // identidade logica (sessionKey), nao a do objeto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, sessionKey]);
 
   // Preenche o barbeiro sem perguntar nada ao usuario. Na edicao o vinculo
   // original e preservado: o padrao so entra quando nao ha barbeiro algum.
@@ -138,7 +170,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
         ? f
         : { ...f, barber_id: defaultBarber.id, barber_name: defaultBarber.name }
     );
-  }, [open, appointment, defaultBarber]);
+  }, [open, defaultBarber]);
 
   const activeServices = useMemo(
     () => services.filter((s) => s.active || s.id === form.service_id),
@@ -168,12 +200,14 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
       set({ service_id: null, service_name: '' });
       return;
     }
+    // Trocar o servico recalcula duracao, preco e termino — e so isso.
+    // A data escolhida nao e tocada.
     set({
       service_id: svc.id,
       service_name: svc.name,
       duration_minutes: svc.duration_minutes,
       price: svc.price,
-      end_time: addMinutes(form.start_time, svc.duration_minutes),
+      end_time: computeEndTime(form.start_time, svc.duration_minutes),
     });
   };
 
@@ -188,7 +222,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
 
   const onChangeTimeOrDuration = (patch: Partial<AppointmentInput>) => {
     const next = { ...form, ...patch };
-    set({ ...patch, end_time: addMinutes(next.start_time, next.duration_minutes) });
+    set({ ...patch, end_time: computeEndTime(next.start_time, next.duration_minutes) });
   };
 
   const toggleRecurrence = (v: boolean) => {
@@ -198,7 +232,7 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
         ...r,
         selectedWeekdays: r.selectedWeekdays.length
           ? r.selectedWeekdays
-          : [parseDate(form.date).getDay()],
+          : [parseLocalDate(form.date).getDay()],
         endDate: r.endDate ?? addDaysISO(form.date, 90),
       }));
     }
@@ -211,6 +245,21 @@ export function AppointmentModal({ open, onClose, appointment, defaultDate, defa
     }
     if (!form.service_id) {
       setError('Selecione um serviço.');
+      return false;
+    }
+    // Data e horario sao barrados aqui. Salvar com um valor invalido
+    // significaria gravar o atendimento em um dia que o usuario nao
+    // escolheu — exatamente o que esta correcao existe para impedir.
+    if (!isValidISODate(form.date)) {
+      setError('Escolha uma data válida para o agendamento.');
+      return false;
+    }
+    if (!formatTimeForDatabase(form.start_time)) {
+      setError('Escolha um horário de início válido.');
+      return false;
+    }
+    if (computeEndTime(form.start_time, form.duration_minutes) <= form.start_time) {
+      setError('O término precisa ser depois do início.');
       return false;
     }
     // O barbeiro e definido automaticamente; sem nenhum ativo nao ha como

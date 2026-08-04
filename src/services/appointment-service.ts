@@ -9,7 +9,14 @@ import type {
 } from '@/types';
 import type { Tables, TablesInsert } from '@/types/database';
 import { BUSY_STATUSES } from '@/lib/constants';
-import { addMinutes, timeToMinutes } from '@/lib/utils/format';
+import {
+  addMinutesToTime,
+  computeEndTime,
+  databaseDateToCalendar,
+  formatTimeForDatabase,
+  isValidISODate,
+  timeToMinutes,
+} from '@/lib/utils/date';
 import {
   BARBER_CONFLICT_MESSAGE,
   db,
@@ -41,7 +48,9 @@ function toAppointment(row: Row): Appointment {
     client_whatsapp: row.client_whatsapp ?? '',
     service_name: row.service_name ?? '',
     barber_name: row.barber_name ?? '',
-    date: row.date,
+    // A coluna e do tipo `date`: o PostgREST devolve "YYYY-MM-DD" pronto.
+    // A normalizacao so garante que nada alem disso chegue ao calendario.
+    date: databaseDateToCalendar(row.date) ?? row.date,
     start_time: toHHmm(row.start_time),
     end_time: toHHmm(row.end_time),
     duration_minutes: row.duration_minutes,
@@ -55,17 +64,20 @@ function toAppointment(row: Row): Appointment {
   };
 }
 
-/**
- * Termino do atendimento a partir do inicio e da duracao do servico.
- * `addMinutes` gira apos a meia-noite; como a agenda e sempre de um unico
- * dia, o horario e limitado a 23:59 nesse caso.
- */
-function computeEndTime(startTime: string, durationMinutes: number): string {
-  const end = addMinutes(startTime, Math.max(1, durationMinutes));
-  return timeToMinutes(end) <= timeToMinutes(startTime) ? '23:59' : end;
-}
+export const INVALID_DATE_MESSAGE =
+  'Escolha uma data válida para o agendamento.';
+export const INVALID_TIME_MESSAGE =
+  'Escolha um horário válido para o agendamento.';
 
 function toRowPayload(input: AppointmentInput) {
+  // Ultima barreira antes do Supabase. A data escolhida pelo usuario e
+  // gravada exatamente como veio — sem conversao para UTC e sem cair para
+  // hoje. Uma data invalida vira erro, nunca um agendamento no dia errado.
+  if (!isValidISODate(input.date)) throw new Error(INVALID_DATE_MESSAGE);
+
+  const startTime = formatTimeForDatabase(input.start_time);
+  if (!startTime) throw new Error(INVALID_TIME_MESSAGE);
+
   // O banco exige duracao positiva e preco nao negativo. Ajustar aqui evita
   // que um campo digitado em branco vire um erro tecnico de constraint.
   const duration = Math.max(1, Math.round(input.duration_minutes) || 1);
@@ -80,8 +92,8 @@ function toRowPayload(input: AppointmentInput) {
     service_name: input.service_name ?? '',
     barber_name: input.barber_name ?? '',
     date: input.date,
-    start_time: input.start_time,
-    end_time: computeEndTime(input.start_time, duration),
+    start_time: startTime,
+    end_time: computeEndTime(startTime, duration),
     duration_minutes: duration,
     price,
     status: input.status,
@@ -152,7 +164,9 @@ export function findBarberConflict(
       if (ignoreGroupId && a.recurring_group_id === ignoreGroupId) return false;
       if (!BUSY_STATUSES.includes(a.status)) return false;
       const otherStart = timeToMinutes(a.start_time);
-      const otherEnd = timeToMinutes(a.end_time || addMinutes(a.start_time, a.duration_minutes));
+      const otherEnd = timeToMinutes(
+        a.end_time || addMinutesToTime(a.start_time, a.duration_minutes)
+      );
       return start < otherEnd && otherStart < end;
     }) ?? null
   );
@@ -230,6 +244,57 @@ export async function updateAppointment(
     const { error } = await db()
       .from('appointments')
       .update(toRowPayload(rest))
+      .eq('id', id);
+    if (error) throw error;
+  });
+}
+
+/**
+ * Move ou redimensiona um atendimento — o que o arraste e a alca de
+ * redimensionamento do calendario fazem.
+ *
+ * Grava SOMENTE data, horarios e duracao. Cliente, WhatsApp, servico,
+ * preco, status, barbeiro, owner_id e observacoes ficam intocados, porque
+ * nem sequer entram no UPDATE.
+ */
+export async function rescheduleAppointment(
+  id: string,
+  next: { date: string; start_time: string; duration_minutes: number }
+): Promise<void> {
+  return run('Erro ao mover o agendamento.', async () => {
+    if (!isValidISODate(next.date)) throw new Error(INVALID_DATE_MESSAGE);
+    const startTime = formatTimeForDatabase(next.start_time);
+    if (!startTime) throw new Error(INVALID_TIME_MESSAGE);
+
+    const duration = Math.max(1, Math.round(next.duration_minutes) || 1);
+    const endTime = computeEndTime(startTime, duration);
+    if (timeToMinutes(endTime) <= timeToMinutes(startTime)) {
+      throw new Error('O término precisa ser depois do início.');
+    }
+
+    const current = await getAppointmentById(id);
+    if (!current) throw new Error('Agendamento não encontrado.');
+
+    // Um cancelado nao ocupa a agenda, entao tambem nao precisa competir
+    // por horario. `ignoreId` impede que ele conflite consigo mesmo.
+    if (BUSY_STATUSES.includes(current.status)) {
+      await assertNoConflict({
+        barberId: current.barber_id,
+        date: next.date,
+        startTime,
+        durationMinutes: duration,
+        ignoreId: id,
+      });
+    }
+
+    const { error } = await db()
+      .from('appointments')
+      .update({
+        date: next.date,
+        start_time: startTime,
+        end_time: endTime,
+        duration_minutes: duration,
+      })
       .eq('id', id);
     if (error) throw error;
   });

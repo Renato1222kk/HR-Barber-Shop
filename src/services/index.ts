@@ -39,10 +39,13 @@ export {
 } from './client-service';
 
 export {
+  INVALID_DATE_MESSAGE,
+  INVALID_TIME_MESSAGE,
   listAppointments,
   getAppointmentById,
   createAppointment,
   updateAppointment,
+  rescheduleAppointment,
   removeAppointment,
   createRecurringAppointments,
   updateAppointmentSeries,

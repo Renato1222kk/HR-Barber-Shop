@@ -78,7 +78,14 @@ export default function FinanceiroPage() {
     <div className="space-y-6 animate-fade-in">
       {/* Faturamento */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Faturamento do dia" value={formatCurrency(fin.dayRevenue)} icon={Wallet} />
+        <StatCard
+          label="Faturamento do dia"
+          value={formatCurrency(fin.dayRevenue)}
+          icon={Wallet}
+          hint={`${fin.dayCount} ${
+            fin.dayCount === 1 ? 'atendimento concluído' : 'atendimentos concluídos'
+          }`}
+        />
         <StatCard label="Da semana" value={formatCurrency(fin.weekRevenue)} icon={CalendarRange} />
         <StatCard
           label="Do mês"

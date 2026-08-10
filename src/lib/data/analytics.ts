@@ -6,6 +6,7 @@ import type {
   FinancialEntry,
 } from '@/types';
 import { parseDate, toISODate } from '@/lib/utils/format';
+import { todayISO } from '@/lib/utils/date';
 import { WEEKDAYS } from '@/lib/constants';
 
 // Somente atendimentos concluidos entram no faturamento.
@@ -86,6 +87,8 @@ export function buildTopServices(
 // =====================================================================
 export interface FinanceSummary {
   dayRevenue: number;
+  /** Quantos atendimentos concluidos entraram no faturamento de hoje. */
+  dayCount: number;
   weekRevenue: number;
   monthRevenue: number;
   ticketAverage: number;
@@ -99,14 +102,25 @@ export interface FinanceSummary {
   barbers: BarberPerformance[];
 }
 
-export function buildFinance(appointments: Appointment[], ref: Date): FinanceSummary {
-  const todayISO = toISODate(ref);
+export function buildFinance(appointments: Appointment[], now: Date = new Date()): FinanceSummary {
+  // "Hoje" da barbearia SEMPRE em America/Sao_Paulo, nunca no fuso do
+  // aparelho. Um celular configurado em UTC vira o dia as 21h locais e,
+  // como o card do dia compara a string exata `a.date === hoje`, passaria
+  // a filtrar por amanha e zerar — enquanto o card do mes (que compara so
+  // ano+mes) continuaria certo. `todayStr` e a data civil da barbearia;
+  // `ref` e essa mesma data a meia-noite LOCAL, para que a aritmetica de
+  // semana/mes/grafico (getMonth/getDate) opere sobre o dia correto.
+  const todayStr = todayISO(now);
+  const ref = parseDate(todayStr);
+
   const monthAll = appointments.filter((a) => inMonth(a.date, ref));
   const realizedMonth = monthAll.filter((a) => REALIZED.includes(a.status));
 
-  const dayRevenue = revenue(
-    appointments.filter((a) => a.date === todayISO && REALIZED.includes(a.status))
+  const realizedToday = appointments.filter(
+    (a) => a.date === todayStr && REALIZED.includes(a.status)
   );
+  const dayRevenue = revenue(realizedToday);
+  const dayCount = realizedToday.length;
   const weekRevenue = revenue(
     appointments.filter((a) => inWeek(a.date, ref) && REALIZED.includes(a.status))
   );
@@ -155,6 +169,7 @@ export function buildFinance(appointments: Appointment[], ref: Date): FinanceSum
 
   return {
     dayRevenue,
+    dayCount,
     weekRevenue,
     monthRevenue,
     ticketAverage,
@@ -185,8 +200,11 @@ export interface EntriesSummary {
 export function buildEntriesSummary(
   entries: FinancialEntry[],
   appointmentsRevenue: number,
-  ref: Date
+  now: Date = new Date()
 ): EntriesSummary {
+  // Mesmo mes civil da barbearia (America/Sao_Paulo) usado em buildFinance,
+  // para que receitas manuais e faturamento somem sempre o mesmo periodo.
+  const ref = parseDate(todayISO(now));
   const month = entries.filter((e) => inMonth(e.occurred_at, ref));
   const sum = (type: FinancialEntry['type']) =>
     month

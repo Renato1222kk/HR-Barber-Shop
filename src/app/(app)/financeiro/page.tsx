@@ -1,63 +1,147 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import {
-  Wallet,
-  CalendarRange,
-  TrendingUp,
-  Receipt,
-  CheckCircle2,
-  Clock4,
-  Ban,
-  Plus,
-  Pencil,
-  Trash2,
-  ArrowDownRight,
-  ArrowUpRight,
-  type LucideIcon,
-} from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { Download, Filter, Plus, X } from 'lucide-react';
 import { useAsync } from '@/lib/hooks';
 import { listAppointments, listFinancialEntries, removeFinancialEntry } from '@/services';
-import { buildEntriesSummary, buildFinance } from '@/lib/data/analytics';
-import { formatCurrency, formatDateShort } from '@/lib/utils/format';
+import {
+  EMPTY_FILTERS,
+  appointmentsCSV,
+  buildFinanceReport,
+  buildRange,
+  countActiveFilters,
+  exportFileName,
+  movementsCSV,
+  previousRange,
+  shiftRange,
+  type FinanceFilters as Filters,
+  type PeriodMode,
+} from '@/lib/data/finance';
+import { addDaysISO, todayISO, type ISODate } from '@/lib/utils/date';
+import { downloadTextFile } from '@/lib/utils/download';
 import { errorMessage } from '@/lib/utils/error';
-import { STATUS_META } from '@/lib/constants';
-import { StatCard } from '@/components/ui/StatCard';
+import { STATUS_META, PAYMENT_METHOD_LABELS } from '@/lib/constants';
+import { formatCurrency } from '@/lib/utils/format';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { LoadingState, ErrorState, EmptyState } from '@/components/ui/Misc';
+import { Modal } from '@/components/ui/Modal';
+import { ErrorState } from '@/components/ui/Misc';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { RevenueAreaChart, ServicesBarChart, StatusPieChart } from '@/components/charts/Charts';
-import { EntryModal, categoryLabel } from '@/components/financeiro/EntryModal';
+import { useShell } from '@/components/layout/AppShell';
 import { emitDataChanged } from '@/lib/events';
+import { FinancePeriodSelector } from '@/components/financeiro/FinancePeriodSelector';
+import { FinanceSummary } from '@/components/financeiro/FinanceSummary';
+import { FinanceResult } from '@/components/financeiro/FinanceResult';
+import { DaySummary } from '@/components/financeiro/DaySummary';
+import { FinanceAppointmentList } from '@/components/financeiro/FinanceAppointmentList';
+import { RevenueChart, IncomeExpenseChart } from '@/components/financeiro/RevenueChart';
+import { PaymentMethods } from '@/components/financeiro/PaymentMethods';
+import { TopServices } from '@/components/financeiro/TopServices';
+import { TopDays } from '@/components/financeiro/TopDays';
+import { ExpenseCategories } from '@/components/financeiro/ExpenseCategories';
+import { FinancialMovements } from '@/components/financeiro/FinancialMovements';
+import { FinancialInsights } from '@/components/financeiro/FinancialInsights';
+import { FinanceFilters } from '@/components/financeiro/FinanceFilters';
+import { FinanceQuickActions } from '@/components/financeiro/FinanceQuickActions';
+import { FinanceSkeleton } from '@/components/financeiro/FinanceSkeleton';
+import { DayDetailsSheet } from '@/components/financeiro/DayDetailsSheet';
+import { BreakdownSheet, type BreakdownData } from '@/components/financeiro/BreakdownSheet';
+import { Section } from '@/components/financeiro/FinanceSection';
+import { EntryModal } from '@/components/financeiro/EntryModal';
 import type { FinancialEntry } from '@/types';
 
+/**
+ * Painel financeiro.
+ *
+ * A pagina so orquestra: escolhe o periodo, carrega UMA vez os
+ * atendimentos e UMA vez os lancamentos que cobrem o periodo (mais o
+ * anterior, usado na comparacao) e entrega tudo a `buildFinanceReport`.
+ * Nenhum calculo financeiro acontece aqui dentro.
+ */
 export default function FinanceiroPage() {
-  const { data, loading, error } = useAsync(() => listAppointments(), []);
-  const entriesQ = useAsync(() => listFinancialEntries(), []);
+  const today = useMemo<ISODate>(() => todayISO(), []);
+  const { openNewAppointment } = useShell();
 
+  // ---- Periodo em foco
+  const [mode, setMode] = useState<PeriodMode>('day');
+  const [anchor, setAnchor] = useState<ISODate>(today);
+  const [custom, setCustom] = useState<{ start: ISODate; end: ISODate }>({
+    start: today,
+    end: today,
+  });
+
+  const range = useMemo(() => buildRange(mode, anchor, custom), [mode, anchor, custom]);
+
+  // ---- Filtros
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilters = countActiveFilters(filters);
+
+  // ---- Dados: duas consultas cobrindo periodo + comparacao + serie do grafico
+  const bounds = useMemo(() => {
+    const previous = previousRange(range);
+    const chartStart = addDaysISO(range.start, -6);
+    const from = [previous.start, chartStart].sort()[0];
+    return { from, to: range.end };
+  }, [range]);
+
+  const apptQ = useAsync(
+    () => listAppointments({ from: bounds.from, to: bounds.to }),
+    [bounds.from, bounds.to]
+  );
+  const entryQ = useAsync(
+    () => listFinancialEntries({ from: bounds.from, to: bounds.to }),
+    [bounds.from, bounds.to]
+  );
+
+  const appointments = useMemo(() => apptQ.data ?? [], [apptQ.data]);
+  const entries = useMemo(() => entryQ.data ?? [], [entryQ.data]);
+
+  const report = useMemo(
+    () => buildFinanceReport({ appointments, entries, range, filters }),
+    [appointments, entries, range, filters]
+  );
+
+  // Opcoes do filtro de servico saem do proprio periodo carregado.
+  const serviceOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          appointments
+            .filter((a) => a.date >= range.start && a.date <= range.end)
+            .map((a) => a.service_name)
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [appointments, range.start, range.end]
+  );
+
+  // ---- Detalhes e lancamentos
+  const [dayDetail, setDayDetail] = useState<ISODate | null>(null);
+  const [breakdown, setBreakdown] = useState<BreakdownData | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<FinancialEntry | null>(null);
   const [deleting, setDeleting] = useState<FinancialEntry | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const fin = useMemo(() => (data ? buildFinance(data, new Date()) : null), [data]);
-  const entries = useMemo(() => entriesQ.data ?? [], [entriesQ.data]);
-  const entriesSummary = useMemo(
-    () => buildEntriesSummary(entries, fin?.monthRevenue ?? 0, new Date()),
-    [entries, fin?.monthRevenue]
-  );
+  const focusDay = useCallback((iso: ISODate) => {
+    setMode('day');
+    setAnchor(iso);
+  }, []);
 
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} />;
-  if (!fin) return null;
+  // Ao sair do personalizado, a ancora passa a ser o inicio do intervalo em
+  // foco — trocar de aba nao pode teleportar o usuario para outro mes.
+  const changeMode = (next: PeriodMode) => {
+    if (mode === 'custom') setAnchor(custom.start);
+    setMode(next);
+  };
 
-  const statusPie = fin.statusCounts.map((s) => ({
-    label: STATUS_META[s.status].label,
-    value: s.count,
-    color: STATUS_META[s.status].color,
-  }));
+  const shift = (step: number) => {
+    const moved = shiftRange(range, step);
+    if (moved.mode === 'custom') setCustom({ start: moved.start, end: moved.end });
+    else setAnchor(moved.start);
+  };
 
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -74,262 +158,256 @@ export default function FinanceiroPage() {
     }
   };
 
+  const reloadAll = () => {
+    apptQ.reload();
+    entryQ.reload();
+  };
+
+  const loading = apptQ.loading || entryQ.loading;
+  const loadError = apptQ.error || entryQ.error;
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Faturamento */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          label="Faturamento do dia"
-          value={formatCurrency(fin.dayRevenue)}
-          icon={Wallet}
-          hint={`${fin.dayCount} ${
-            fin.dayCount === 1 ? 'atendimento concluído' : 'atendimentos concluídos'
-          }`}
-        />
-        <StatCard label="Da semana" value={formatCurrency(fin.weekRevenue)} icon={CalendarRange} />
-        <StatCard
-          label="Do mês"
-          value={formatCurrency(fin.monthRevenue)}
-          icon={TrendingUp}
-          accent
-        />
-        <StatCard
-          label="Ticket médio"
-          value={formatCurrency(fin.ticketAverage)}
-          icon={Receipt}
-          hint="por atendimento"
-        />
-      </div>
-
-      {/* Contadores de status (mes) */}
-      <div className="grid grid-cols-3 gap-3">
-        <MiniStat
-          icon={CheckCircle2}
-          label="Concluídos"
-          value={fin.completed}
-          tone="text-ink-900"
-        />
-        <MiniStat icon={Clock4} label="Pendentes" value={fin.pending} tone="text-blue-600" />
-        <MiniStat icon={Ban} label="Cancelados" value={fin.cancellations} tone="text-ink-600" />
-      </div>
-
-      {/* Grafico faturamento por dia */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Faturamento (últimos 14 dias)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RevenueAreaChart data={fin.revenueByDay} />
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Servicos mais realizados */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Serviços mais realizados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {fin.topServices.length ? (
-              <ServicesBarChart data={fin.topServices} />
-            ) : (
-              <p className="py-10 text-center text-sm text-ink-500">Sem dados no mês.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Status dos agendamentos */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Status dos agendamentos (mês)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatusPieChart data={statusPie} />
-            <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
-              {statusPie
-                .filter((s) => s.value > 0)
-                .map((s) => (
-                  <span
-                    key={s.label}
-                    className="inline-flex items-center gap-1.5 text-xs text-ink-600"
-                  >
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
-                    {s.label} ({s.value})
-                  </span>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Faturamento por barbeiro */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Faturamento por barbeiro (mês)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {fin.barbers.length ? (
-            <div className="divide-y divide-ink-100">
-              {fin.barbers.map((b) => (
-                <div key={b.name} className="flex items-center gap-3 px-1 py-2.5">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink-100 text-xs font-semibold text-ink-700">
-                    {b.name.charAt(0).toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-ink-900">{b.name}</p>
-                    <p className="text-xs text-ink-500">
-                      {b.completed} de {b.total} concluído(s)
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-semibold text-ink-900">
-                    {formatCurrency(b.revenue)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="py-10 text-center text-sm text-ink-500">Sem dados no mês.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Clientes que mais gastaram */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Clientes que mais gastaram (mês)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {fin.topClients.length ? (
-            <div className="divide-y divide-ink-100">
-              {fin.topClients.map((c, i) => (
-                <div key={c.name} className="flex items-center gap-3 px-1 py-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink-100 text-xs font-semibold text-ink-700">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-ink-900">{c.name}</p>
-                    <p className="text-xs text-ink-500">{c.visits} atendimento(s)</p>
-                  </div>
-                  <span className="shrink-0 text-sm font-semibold text-ink-900">
-                    {formatCurrency(c.total)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="py-10 text-center text-sm text-ink-500">Sem dados no mês.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Lancamentos manuais (receitas e despesas fora da agenda) */}
-      <Card>
-        <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>Lançamentos do mês</CardTitle>
-          <Button size="sm" onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" /> Novo lançamento
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <MiniStat
-              icon={ArrowUpRight}
-              label="Receitas avulsas"
-              value={formatCurrency(entriesSummary.monthIncome)}
-              tone="text-green-600"
-            />
-            <MiniStat
-              icon={ArrowDownRight}
-              label="Despesas"
-              value={formatCurrency(entriesSummary.monthExpense)}
-              tone="text-red-600"
-            />
-            <MiniStat
-              icon={Wallet}
-              label="Saldo do mês"
-              value={formatCurrency(entriesSummary.monthBalance)}
-              tone="text-ink-900"
-            />
-          </div>
-
-          {actionError && <ErrorState message={actionError} />}
-          {entriesQ.error && <ErrorState message={entriesQ.error} />}
-
-          {entriesQ.loading ? (
-            <LoadingState label="Carregando lançamentos..." />
-          ) : entries.length === 0 ? (
-            <EmptyState
-              icon={Receipt}
-              title="Nenhum lançamento registrado"
-              description="Use os lançamentos para registrar despesas e receitas que não passam pela agenda."
-              action={
-                <Button onClick={() => setCreating(true)}>
-                  <Plus className="h-4 w-4" /> Novo lançamento
-                </Button>
-              }
-            />
-          ) : (
-            <div className="divide-y divide-ink-100">
-              {entries.slice(0, 30).map((entry) => {
-                const isIncome = entry.type === 'income';
-                return (
-                  <div key={entry.id} className="flex items-center gap-3 px-1 py-2.5">
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                        isIncome ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-                      }`}
-                    >
-                      {isIncome ? (
-                        <ArrowUpRight className="h-4 w-4" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4" />
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-ink-900">
-                        {entry.description}
-                      </p>
-                      <p className="truncate text-xs text-ink-500">
-                        {formatDateShort(entry.occurred_at)} · {categoryLabel(entry.category)}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 text-sm font-semibold ${
-                        isIncome ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {isIncome ? '+' : '−'} {formatCurrency(entry.amount)}
-                    </span>
-                    <div className="flex shrink-0 gap-1">
-                      <button
-                        onClick={() => setEditing(entry)}
-                        aria-label={`Editar ${entry.description}`}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleting(entry)}
-                        aria-label={`Excluir ${entry.description}`}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-red-50 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <EntryModal open={creating} onClose={() => setCreating(false)} />
-      <EntryModal
-        open={Boolean(editing)}
-        entry={editing}
-        onClose={() => setEditing(null)}
+    <div className="space-y-4 animate-fade-in">
+      <FinancePeriodSelector
+        range={range}
+        today={today}
+        onModeChange={changeMode}
+        onShift={shift}
+        onToday={() => {
+          setAnchor(today);
+          if (mode === 'custom') setCustom({ start: today, end: today });
+        }}
+        onPickDate={(iso) => {
+          setAnchor(iso);
+          if (mode === 'custom') setCustom({ start: iso, end: iso });
+        }}
+        onCustom={(start, end) => {
+          setCustom({ start, end });
+          setMode('custom');
+        }}
       />
+
+      {/* Ações do período */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <Button variant="secondary" onClick={() => setFiltersOpen(true)} className="min-w-0">
+          <Filter className="h-4 w-4 shrink-0" />
+          <span className="truncate">Filtros{activeFilters > 0 ? ` (${activeFilters})` : ''}</span>
+        </Button>
+        <Button variant="secondary" onClick={() => setExportOpen(true)} className="min-w-0">
+          <Download className="h-4 w-4 shrink-0" />
+          <span className="truncate">Exportar</span>
+        </Button>
+        <Button
+          onClick={() => setCreating(true)}
+          className="col-span-2 hidden sm:inline-flex"
+        >
+          <Plus className="h-4 w-4" />
+          Nova movimentação
+        </Button>
+      </div>
+
+      {activeFilters > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-ink-200 bg-white px-4 py-2.5">
+          <p className="min-w-0 truncate text-xs text-ink-600">
+            {activeFilters} filtro(s) aplicado(s) a toda a tela
+          </p>
+          <button
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-ink-900"
+          >
+            <X className="h-3.5 w-3.5" /> Limpar
+          </button>
+        </div>
+      )}
+
+      {actionError && <ErrorState message={actionError} />}
+
+      {loading ? (
+        <FinanceSkeleton />
+      ) : loadError ? (
+        <div className="space-y-3">
+          <ErrorState message={loadError} />
+          <Button variant="secondary" onClick={reloadAll} className="w-full sm:w-auto">
+            Tentar novamente
+          </Button>
+        </div>
+      ) : (
+        <>
+          <FinanceSummary report={report} onOpenDay={setDayDetail} />
+
+          {range.mode === 'day' && (
+            <>
+              <DaySummary report={report} />
+              <Section
+                title="Atendimentos do dia"
+                description={`${report.appointments.length} na agenda · ${report.completed} concluído(s)`}
+              >
+                <FinanceAppointmentList
+                  appointments={report.appointments}
+                  emptyLabel="Nenhum atendimento neste dia."
+                />
+              </Section>
+            </>
+          )}
+
+          <Section
+            title={report.seriesTitle}
+            description={
+              report.seriesGranularity === 'day'
+                ? 'Toque em uma coluna para ver o dia'
+                : 'Agrupado por semana'
+            }
+            flush
+          >
+            <RevenueChart
+              data={report.series}
+              onSelectDay={setDayDetail}
+              highlight={range.mode === 'day' ? range.start : null}
+            />
+          </Section>
+
+          {(report.expense > 0 || report.extraIncome > 0) && (
+            <Section title="Receitas × despesas" flush>
+              <IncomeExpenseChart data={report.series} />
+            </Section>
+          )}
+
+          <FinanceResult report={report} />
+
+          {range.mode !== 'day' && (
+            <TopDays
+              days={report.topDays.slice(0, 5)}
+              title={range.mode === 'month' ? 'Melhores dias do mês' : 'Melhores dias do período'}
+              onSelect={setDayDetail}
+            />
+          )}
+
+          <PaymentMethods
+            payments={report.payments}
+            total={report.totalIncome}
+            onSelect={(slice) =>
+              setBreakdown({
+                title: slice.label,
+                subtitle: 'Recebido no período',
+                total: slice.value,
+                count: slice.count,
+                appointments: report.completedAppointments.filter((a) =>
+                  slice.method === 'nao_informado'
+                    ? !a.payment_method
+                    : a.payment_method === slice.method
+                ),
+                facts: [
+                  {
+                    label: 'Participação',
+                    value: `${slice.percent.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`,
+                  },
+                  { label: 'Recebimentos', value: String(slice.count) },
+                  {
+                    label: 'Forma de pagamento',
+                    value:
+                      slice.method === 'nao_informado'
+                        ? 'Não informado'
+                        : PAYMENT_METHOD_LABELS[slice.method],
+                  },
+                ],
+              })
+            }
+          />
+
+          <TopServices
+            services={report.services}
+            onSelect={(service) =>
+              setBreakdown({
+                title: service.name,
+                subtitle: 'Faturamento no período',
+                total: service.revenue,
+                count: service.count,
+                appointments: report.completedAppointments.filter(
+                  (a) => a.service_name === service.name
+                ),
+                facts: [
+                  {
+                    label: 'Participação no faturamento',
+                    value: `${service.percent.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`,
+                  },
+                  {
+                    label: 'Ticket médio',
+                    value: formatCurrency(service.count ? service.revenue / service.count : 0),
+                  },
+                ],
+              })
+            }
+          />
+
+          {report.expense > 0 && (
+            <ExpenseCategories categories={report.expenseCategories} total={report.expense} />
+          )}
+
+          <FinancialMovements
+            movements={report.movements}
+            onNew={() => setCreating(true)}
+            onEditEntry={setEditing}
+            onDeleteEntry={setDeleting}
+            onOpenDay={setDayDetail}
+          />
+
+          <FinancialInsights insights={report.insights} />
+        </>
+      )}
+
+      <FinanceQuickActions
+        onNewMovement={() => setCreating(true)}
+        onNewAppointment={() => openNewAppointment({ date: range.start })}
+      />
+
+      <FinanceFilters
+        open={filtersOpen}
+        filters={filters}
+        services={serviceOptions}
+        onClose={() => setFiltersOpen(false)}
+        onApply={(next) => {
+          setFilters(next);
+          setFiltersOpen(false);
+        }}
+      />
+
+      <DayDetailsSheet
+        iso={dayDetail}
+        appointments={appointments}
+        entries={entries}
+        filters={filters}
+        today={today}
+        onClose={() => setDayDetail(null)}
+        onFocusDay={focusDay}
+      />
+
+      <BreakdownSheet data={breakdown} onClose={() => setBreakdown(null)} />
+
+      <ExportSheet
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        onExportAppointments={() => {
+          downloadTextFile(
+            exportFileName('atendimentos', range),
+            appointmentsCSV(report, (status) => STATUS_META[status].label)
+          );
+          setExportOpen(false);
+        }}
+        onExportMovements={() => {
+          downloadTextFile(exportFileName('movimentacoes', range), movementsCSV(report));
+          setExportOpen(false);
+        }}
+        appointmentsCount={report.appointments.length}
+        movementsCount={report.movements.length}
+      />
+
+      <EntryModal
+        open={creating}
+        onClose={() => setCreating(false)}
+        defaultDate={range.mode === 'day' ? range.start : today}
+      />
+      <EntryModal open={Boolean(editing)} entry={editing} onClose={() => setEditing(null)} />
+
       <ConfirmDialog
         open={Boolean(deleting)}
         title="Excluir lançamento?"
@@ -342,22 +420,66 @@ export default function FinanceiroPage() {
   );
 }
 
-function MiniStat({
-  icon: Icon,
-  label,
-  value,
-  tone,
+function ExportSheet({
+  open,
+  onClose,
+  onExportAppointments,
+  onExportMovements,
+  appointmentsCount,
+  movementsCount,
 }: {
-  icon: LucideIcon;
-  label: string;
-  value: number | string;
-  tone: string;
+  open: boolean;
+  onClose: () => void;
+  onExportAppointments: () => void;
+  onExportMovements: () => void;
+  appointmentsCount: number;
+  movementsCount: number;
 }) {
   return (
-    <Card className="flex flex-col items-center gap-1 p-4 text-center">
-      <Icon className={`h-5 w-5 ${tone}`} />
-      <span className="w-full truncate text-lg font-semibold text-ink-900 sm:text-xl">{value}</span>
-      <span className="text-[11px] text-ink-500">{label}</span>
-    </Card>
+    <Modal open={open} onClose={onClose} title="Exportar período">
+      <div className="space-y-2 pb-2">
+        <ExportOption
+          title="Atendimentos (CSV)"
+          description={`${appointmentsCount} registro(s) · data, cliente, serviço, valor, pagamento e status`}
+          disabled={appointmentsCount === 0}
+          onClick={onExportAppointments}
+        />
+        <ExportOption
+          title="Movimentações (CSV)"
+          description={`${movementsCount} registro(s) · entradas e despesas do período`}
+          disabled={movementsCount === 0}
+          onClick={onExportMovements}
+        />
+      </div>
+    </Modal>
+  );
+}
+
+function ExportOption({
+  title,
+  description,
+  disabled,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex w-full items-center gap-3 rounded-xl border border-ink-200 p-4 text-left transition-colors hover:bg-ink-50 active:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink-100 text-ink-700">
+        <Download className="h-5 w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-ink-900">{title}</span>
+        <span className="block text-xs text-ink-500">{description}</span>
+      </span>
+    </button>
   );
 }

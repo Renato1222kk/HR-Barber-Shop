@@ -1,4 +1,4 @@
-import type { AppointmentStatus } from '@/types';
+import type { AppointmentStatus, PaymentMethod } from '@/types';
 
 export const BRAND = {
   name: 'HR Barber Shop',
@@ -85,3 +85,92 @@ export const WEEKDAYS = [
 ];
 
 export const WEEKDAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+export const MONTHS = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
+
+export const MONTHS_SHORT = [
+  'jan',
+  'fev',
+  'mar',
+  'abr',
+  'mai',
+  'jun',
+  'jul',
+  'ago',
+  'set',
+  'out',
+  'nov',
+  'dez',
+];
+
+// =====================================================================
+// FINANCEIRO
+//
+// Rotulos compartilhados entre o formulario de lancamento e os relatorios
+// do painel financeiro — uma unica fonte para nao divergirem.
+// =====================================================================
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  'pix',
+  'dinheiro',
+  'credito',
+  'debito',
+  'outro',
+];
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  pix: 'Pix',
+  dinheiro: 'Dinheiro',
+  credito: 'Crédito',
+  debito: 'Débito',
+  outro: 'Outro',
+};
+
+export function paymentMethodLabel(method: PaymentMethod | null): string {
+  return method ? PAYMENT_METHOD_LABELS[method] : 'Não informado';
+}
+
+/** Categorias sugeridas dos lancamentos manuais (a coluna aceita texto livre). */
+export const ENTRY_CATEGORIES = [
+  'produtos',
+  'alimentacao',
+  'energia',
+  'limpeza',
+  'comissao',
+  'aluguel',
+  'salario',
+  'marketing',
+  'manutencao',
+  'outros',
+];
+
+export const ENTRY_CATEGORY_LABELS: Record<string, string> = {
+  produtos: 'Produtos',
+  alimentacao: 'Alimentação',
+  energia: 'Energia',
+  limpeza: 'Limpeza',
+  comissao: 'Comissão',
+  aluguel: 'Aluguel',
+  salario: 'Salário',
+  marketing: 'Marketing',
+  manutencao: 'Manutenção',
+  outros: 'Outros',
+  servicos: 'Serviços',
+};
+
+export function entryCategoryLabel(category: string): string {
+  if (ENTRY_CATEGORY_LABELS[category]) return ENTRY_CATEGORY_LABELS[category];
+  return category ? category.charAt(0).toUpperCase() + category.slice(1) : 'Outros';
+}

@@ -7,6 +7,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        // Celulares muito estreitos (320–379px) ficam em uma coluna; a
+        // partir daqui cabem dois cards lado a lado sem cortar valores.
+        xs: '380px',
+      },
       colors: {
         /**
          * Paleta clara "premium": branco nas superfícies, cinza muito claro

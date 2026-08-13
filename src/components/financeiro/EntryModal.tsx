@@ -6,8 +6,14 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { ErrorState } from '@/components/ui/Misc';
 import { cn } from '@/lib/utils/cn';
-import { toISODate } from '@/lib/utils/format';
+import { todayISO } from '@/lib/utils/date';
 import { errorMessage } from '@/lib/utils/error';
+import {
+  ENTRY_CATEGORIES,
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_LABELS,
+  entryCategoryLabel,
+} from '@/lib/constants';
 import { createFinancialEntry, updateFinancialEntry } from '@/services';
 import { emitDataChanged } from '@/lib/events';
 import type {
@@ -21,54 +27,31 @@ interface Props {
   open: boolean;
   onClose: () => void;
   entry?: FinancialEntry | null;
+  /** Data ja em foco no painel financeiro ("YYYY-MM-DD"). */
+  defaultDate?: string;
+  defaultType?: FinancialEntryType;
 }
 
-export const ENTRY_CATEGORIES = [
-  'produtos',
-  'comissao',
-  'aluguel',
-  'salario',
-  'marketing',
-  'manutencao',
-  'outros',
-];
+// Rotulos e categorias moram em `@/lib/constants` — o painel financeiro usa
+// exatamente os mesmos. Reexportados aqui por compatibilidade.
+export { ENTRY_CATEGORIES };
+export const categoryLabel = entryCategoryLabel;
 
-const PAYMENT_LABELS: Record<PaymentMethod, string> = {
-  dinheiro: 'Dinheiro',
-  pix: 'Pix',
-  debito: 'Cartão de débito',
-  credito: 'Cartão de crédito',
-  outro: 'Outro',
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  produtos: 'Produtos',
-  comissao: 'Comissão',
-  aluguel: 'Aluguel',
-  salario: 'Salário',
-  marketing: 'Marketing',
-  manutencao: 'Manutenção',
-  outros: 'Outros',
-};
-
-export function categoryLabel(category: string): string {
-  return CATEGORY_LABELS[category] ?? category;
-}
-
-const emptyEntry = (): FinancialEntryInput => ({
+const emptyEntry = (date?: string, type: FinancialEntryType = 'expense'): FinancialEntryInput => ({
   appointment_id: null,
-  type: 'expense',
+  type,
   category: 'outros',
   description: '',
   amount: 0,
   payment_method: null,
-  occurred_at: toISODate(new Date()),
+  // Data civil da barbearia (America/Sao_Paulo), nunca o dia do aparelho.
+  occurred_at: date ?? todayISO(),
 });
 
 /** Cadastro de receita ou despesa avulsa (fora da agenda). */
-export function EntryModal({ open, onClose, entry }: Props) {
+export function EntryModal({ open, onClose, entry, defaultDate, defaultType }: Props) {
   const isEdit = Boolean(entry);
-  const [form, setForm] = useState<FinancialEntryInput>(emptyEntry);
+  const [form, setForm] = useState<FinancialEntryInput>(() => emptyEntry(defaultDate, defaultType));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,9 +62,9 @@ export function EntryModal({ open, onClose, entry }: Props) {
       const { id, created_at, ...rest } = entry;
       setForm(rest);
     } else {
-      setForm(emptyEntry());
+      setForm(emptyEntry(defaultDate, defaultType));
     }
-  }, [open, entry]);
+  }, [open, entry, defaultDate, defaultType]);
 
   const set = (patch: Partial<FinancialEntryInput>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -185,7 +168,7 @@ export function EntryModal({ open, onClose, entry }: Props) {
             <Select value={form.category} onChange={(e) => set({ category: e.target.value })}>
               {ENTRY_CATEGORIES.map((category) => (
                 <option key={category} value={category}>
-                  {categoryLabel(category)}
+                  {entryCategoryLabel(category)}
                 </option>
               ))}
             </Select>
@@ -198,9 +181,9 @@ export function EntryModal({ open, onClose, entry }: Props) {
               }
             >
               <option value="">Não informado</option>
-              {(Object.keys(PAYMENT_LABELS) as PaymentMethod[]).map((method) => (
+              {PAYMENT_METHODS.map((method: PaymentMethod) => (
                 <option key={method} value={method}>
-                  {PAYMENT_LABELS[method]}
+                  {PAYMENT_METHOD_LABELS[method]}
                 </option>
               ))}
             </Select>

@@ -1,43 +1,21 @@
-import type {
-  Appointment,
-  AppointmentStatus,
-  Client,
-  ClientWithStats,
-  FinancialEntry,
-} from '@/types';
-import { parseDate, toISODate } from '@/lib/utils/format';
-import { todayISO } from '@/lib/utils/date';
-import { WEEKDAYS } from '@/lib/constants';
+// Analises gerais do negocio (barbeiros, clientes e insights).
+//
+// O painel financeiro tem motor proprio em `./finance`: periodo, filtros,
+// comparacoes, graficos e extrato saem todos de la. Nao duplique conta de
+// faturamento aqui.
 
-// Somente atendimentos concluidos entram no faturamento.
-const REALIZED: AppointmentStatus[] = ['concluido'];
-const PENDING: AppointmentStatus[] = ['agendado', 'confirmado', 'em_atendimento'];
+import type { Appointment, AppointmentStatus, Client, ClientWithStats } from '@/types';
+import { parseDate } from '@/lib/utils/format';
+import { WEEKDAYS } from '@/lib/constants';
+import { REALIZED } from './finance';
 
 function revenue(appts: Appointment[]): number {
   return appts.reduce((sum, a) => sum + Number(a.price || 0), 0);
 }
 
-// ---- Janelas de tempo ----
-export function startOfWeek(d: Date): Date {
-  const x = new Date(d);
-  const day = (x.getDay() + 6) % 7; // segunda = 0
-  x.setDate(x.getDate() - day);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-export function endOfWeek(d: Date): Date {
-  const s = startOfWeek(d);
-  s.setDate(s.getDate() + 6);
-  return s;
-}
-
 function inMonth(iso: string, ref: Date): boolean {
   const d = parseDate(iso);
   return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
-}
-function inWeek(iso: string, ref: Date): boolean {
-  const d = parseDate(iso).getTime();
-  return d >= startOfWeek(ref).getTime() && d <= endOfWeek(ref).getTime();
 }
 
 export interface BarberPerformance {
@@ -61,164 +39,6 @@ export function buildBarberPerformance(appointments: Appointment[]): BarberPerfo
     map.set(name, entry);
   });
   return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue || b.total - a.total);
-}
-
-/** Servicos mais realizados (somente concluidos). */
-export function buildTopServices(
-  appointments: Appointment[],
-  limit = 6
-): { label: string; value: number; revenue: number }[] {
-  const map: Record<string, { value: number; revenue: number }> = {};
-  appointments
-    .filter((a) => REALIZED.includes(a.status))
-    .forEach((a) => {
-      map[a.service_name] = map[a.service_name] || { value: 0, revenue: 0 };
-      map[a.service_name].value += 1;
-      map[a.service_name].revenue += Number(a.price || 0);
-    });
-  return Object.entries(map)
-    .map(([label, v]) => ({ label, ...v }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, limit);
-}
-
-// =====================================================================
-// FINANCEIRO
-// =====================================================================
-export interface FinanceSummary {
-  dayRevenue: number;
-  /** Quantos atendimentos concluidos entraram no faturamento de hoje. */
-  dayCount: number;
-  weekRevenue: number;
-  monthRevenue: number;
-  ticketAverage: number;
-  completed: number;
-  pending: number;
-  cancellations: number;
-  topServices: { label: string; value: number; revenue: number }[];
-  topClients: { name: string; total: number; visits: number }[];
-  statusCounts: { status: AppointmentStatus; count: number }[];
-  revenueByDay: { label: string; value: number; iso: string }[];
-  barbers: BarberPerformance[];
-}
-
-export function buildFinance(appointments: Appointment[], now: Date = new Date()): FinanceSummary {
-  // "Hoje" da barbearia SEMPRE em America/Sao_Paulo, nunca no fuso do
-  // aparelho. Um celular configurado em UTC vira o dia as 21h locais e,
-  // como o card do dia compara a string exata `a.date === hoje`, passaria
-  // a filtrar por amanha e zerar — enquanto o card do mes (que compara so
-  // ano+mes) continuaria certo. `todayStr` e a data civil da barbearia;
-  // `ref` e essa mesma data a meia-noite LOCAL, para que a aritmetica de
-  // semana/mes/grafico (getMonth/getDate) opere sobre o dia correto.
-  const todayStr = todayISO(now);
-  const ref = parseDate(todayStr);
-
-  const monthAll = appointments.filter((a) => inMonth(a.date, ref));
-  const realizedMonth = monthAll.filter((a) => REALIZED.includes(a.status));
-
-  const realizedToday = appointments.filter(
-    (a) => a.date === todayStr && REALIZED.includes(a.status)
-  );
-  const dayRevenue = revenue(realizedToday);
-  const dayCount = realizedToday.length;
-  const weekRevenue = revenue(
-    appointments.filter((a) => inWeek(a.date, ref) && REALIZED.includes(a.status))
-  );
-  const monthRevenue = revenue(realizedMonth);
-  const ticketAverage = realizedMonth.length ? monthRevenue / realizedMonth.length : 0;
-
-  // top clientes
-  const cli: Record<string, { total: number; visits: number }> = {};
-  realizedMonth.forEach((a) => {
-    cli[a.client_name] = cli[a.client_name] || { total: 0, visits: 0 };
-    cli[a.client_name].total += Number(a.price);
-    cli[a.client_name].visits += 1;
-  });
-  const topClients = Object.entries(cli)
-    .map(([name, v]) => ({ name, ...v }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
-
-  // status counts (mes)
-  const statuses: AppointmentStatus[] = [
-    'agendado',
-    'confirmado',
-    'em_atendimento',
-    'concluido',
-    'cancelado',
-  ];
-  const statusCounts = statuses.map((status) => ({
-    status,
-    count: monthAll.filter((a) => a.status === status).length,
-  }));
-
-  // faturamento ultimos 14 dias
-  const revenueByDay: { label: string; value: number; iso: string }[] = [];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(ref);
-    d.setDate(ref.getDate() - i);
-    const iso = toISODate(d);
-    revenueByDay.push({
-      iso,
-      label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-      value: revenue(
-        appointments.filter((a) => a.date === iso && REALIZED.includes(a.status))
-      ),
-    });
-  }
-
-  return {
-    dayRevenue,
-    dayCount,
-    weekRevenue,
-    monthRevenue,
-    ticketAverage,
-    completed: realizedMonth.length,
-    pending: monthAll.filter((a) => PENDING.includes(a.status)).length,
-    cancellations: monthAll.filter((a) => a.status === 'cancelado').length,
-    topServices: buildTopServices(monthAll),
-    topClients,
-    statusCounts,
-    revenueByDay,
-    barbers: buildBarberPerformance(monthAll),
-  };
-}
-
-// =====================================================================
-// LANCAMENTOS MANUAIS (financial_entries)
-//
-// Complementam o faturamento dos atendimentos concluidos: entram aqui as
-// receitas e despesas que nao passam pela agenda.
-// =====================================================================
-export interface EntriesSummary {
-  monthIncome: number;
-  monthExpense: number;
-  /** Receita dos atendimentos concluidos + receitas manuais - despesas. */
-  monthBalance: number;
-}
-
-export function buildEntriesSummary(
-  entries: FinancialEntry[],
-  appointmentsRevenue: number,
-  now: Date = new Date()
-): EntriesSummary {
-  // Mesmo mes civil da barbearia (America/Sao_Paulo) usado em buildFinance,
-  // para que receitas manuais e faturamento somem sempre o mesmo periodo.
-  const ref = parseDate(todayISO(now));
-  const month = entries.filter((e) => inMonth(e.occurred_at, ref));
-  const sum = (type: FinancialEntry['type']) =>
-    month
-      .filter((e) => e.type === type)
-      .reduce((total, e) => total + Number(e.amount || 0), 0);
-
-  const monthIncome = sum('income');
-  const monthExpense = sum('expense');
-
-  return {
-    monthIncome,
-    monthExpense,
-    monthBalance: appointmentsRevenue + monthIncome - monthExpense,
-  };
 }
 
 // =====================================================================

@@ -16,6 +16,23 @@ export const TIMEZONE = 'America/Sao_Paulo';
 /** Rota principal do app: é para onde vai quem acabou de entrar. */
 export const HOME_ROUTE = '/agenda';
 
+// =====================================================================
+// AGENDAMENTO ONLINE PUBLICO (/agendar)
+//
+// Valores de referencia para a interface. A fonte da verdade e o banco:
+// as funcoes booking_min_lead_minutes() / booking_max_advance_days()
+// controlam a regra de disponibilidade no servidor.
+// =====================================================================
+
+/** Rota publica de agendamento (sem login). */
+export const BOOKING_ROUTE = '/agendar';
+
+/** Antecedência mínima para agendar no próprio dia (minutos). */
+export const BOOKING_MIN_LEAD_MINUTES = 30;
+
+/** Janela futura máxima de agendamento (dias). */
+export const BOOKING_MAX_ADVANCE_DAYS = 60;
+
 export const STATUS_META: Record<
   AppointmentStatus,
   { label: string; color: string; dot: string; badge: string; bar: string }

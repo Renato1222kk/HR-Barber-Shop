@@ -25,6 +25,7 @@ import { Field, Input } from '@/components/ui/Field';
 import { LoadingState, ErrorState, Toggle } from '@/components/ui/Misc';
 import { LogoMark } from '@/components/brand/Logo';
 import { DemoMigrationCard } from '@/components/settings/DemoMigrationCard';
+import { BookingShareCard } from '@/components/settings/BookingShareCard';
 import { InstallAppButton, InstalledBadge } from '@/components/pwa/InstallAppButton';
 import { emitDataChanged } from '@/lib/events';
 import type { Settings, WorkingHour } from '@/types';
@@ -217,6 +218,9 @@ export default function ConfiguracoesPage() {
         <Save className="h-4 w-4" />
         {saved ? 'Salvo!' : 'Salvar alterações'}
       </Button>
+
+      {/* Link publico de agendamento */}
+      <BookingShareCard />
 
       {/* Instalacao do PWA */}
       <Card>

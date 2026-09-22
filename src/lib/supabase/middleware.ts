@@ -18,6 +18,14 @@ const PRIVATE_ROUTES = [
 /** Rotas de autenticacao: quem ja esta logado nao precisa delas. */
 const AUTH_ROUTES = ['/login', '/recuperar-senha'];
 
+/**
+ * Superficie PUBLICA do agendamento online. Sao as UNICAS rotas liberadas
+ * sem sessao: a pagina /agendar e os endpoints /api/booking/*. Passam
+ * direto, sem o custo de renovar a sessao — nenhuma delas depende de
+ * login. As rotas administrativas acima continuam protegidas.
+ */
+const PUBLIC_ROUTES = ['/agendar', '/api/booking'];
+
 function matches(pathname: string, routes: string[]): boolean {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
@@ -28,6 +36,11 @@ function matches(pathname: string, routes: string[]): boolean {
  * gravados, senao a sessao renovada se perde.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
+  // Agendamento publico: liberado sem sessao e sem renovar cookies.
+  if (matches(request.nextUrl.pathname, PUBLIC_ROUTES)) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const env = readSupabaseEnv();

@@ -1,6 +1,7 @@
 'use client';
 
-import { Check, CalendarPlus, MessageCircle, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+import { Check, CalendarCheck, CalendarPlus, MessageCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { formatDateLong } from '@/lib/utils/format';
 import { bookingWhatsappMessage, whatsappLink } from '@/lib/utils/whatsapp';
@@ -29,6 +30,13 @@ export function SuccessStep({ result, settings, onReset }: SuccessStepProps) {
     window.open(whatsappLink(settings.whatsapp, message), '_blank', 'noopener,noreferrer');
   };
 
+  // Leva para a lista pública do dia, com o horário recém-criado em destaque.
+  // O highlight é só apresentação: nenhum ID ou dado privado vai na URL.
+  const scheduleHref = `/horarios?${new URLSearchParams({
+    date: result.date,
+    highlight: result.start_time,
+  }).toString()}`;
+
   const handleCalendar = () => {
     downloadICS(
       {
@@ -50,10 +58,10 @@ export function SuccessStep({ result, settings, onReset }: SuccessStepProps) {
       </span>
 
       <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
-        Seu horário está marcado!
+        Horário confirmado!
       </h1>
       <p className="mt-2 max-w-xs text-sm leading-relaxed text-ink-500">
-        Esperamos você na {business}.
+        Seu agendamento foi registrado com sucesso. Esperamos você na {business}.
       </p>
 
       {/* Resumo */}
@@ -71,8 +79,15 @@ export function SuccessStep({ result, settings, onReset }: SuccessStepProps) {
 
       {/* Ações */}
       <div className="mt-6 w-full space-y-2.5">
+        <Link
+          href={scheduleHref}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-6 text-base font-semibold text-white shadow-card transition-colors hover:bg-ink-800 active:bg-ink-900"
+        >
+          <CalendarCheck className="h-4 w-4" />
+          Ver meu horário na agenda
+        </Link>
         {settings?.whatsapp && (
-          <Button size="lg" className="w-full" onClick={handleWhatsapp}>
+          <Button variant="secondary" size="lg" className="w-full" onClick={handleWhatsapp}>
             <MessageCircle className="h-4 w-4" />
             Falar com a {business}
           </Button>

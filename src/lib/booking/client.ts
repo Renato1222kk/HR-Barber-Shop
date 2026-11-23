@@ -6,6 +6,7 @@
 import { BOOKING_GENERIC_ERROR } from './errors';
 import type {
   AvailabilityResult,
+  BookedSlotsResult,
   CreateBookingInput,
   CreateBookingResult,
   PublicService,
@@ -60,4 +61,12 @@ export async function createBooking(
   if (!res.ok) throw new Error(await readError(res));
   const body = await res.json();
   return body.booking as CreateBookingResult;
+}
+
+/** Horários já marcados num dia (nomes abreviados pelo servidor). */
+export async function fetchBookedSlots(date: string): Promise<BookedSlotsResult> {
+  const params = new URLSearchParams({ date });
+  const res = await fetch(`/api/booking/booked?${params.toString()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(await readError(res));
+  return (await res.json()) as BookedSlotsResult;
 }

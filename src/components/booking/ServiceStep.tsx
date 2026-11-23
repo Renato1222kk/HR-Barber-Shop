@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronRight, Clock, MapPin, Phone, Scissors } from 'lucide-react';
+import Link from 'next/link';
+import { CalendarCheck, ChevronRight, Clock, MapPin, Phone, Scissors } from 'lucide-react';
 import { LogoMark } from '@/components/brand/Logo';
 import { formatWhatsappDisplay } from '@/lib/utils/whatsapp';
 import type { PublicService, PublicSettings } from '@/lib/booking/types';
@@ -45,6 +46,14 @@ export function ServiceStep({ services, settings, selectedId, onSelect }: Servic
             )}
           </div>
         )}
+
+        <Link
+          href="/horarios"
+          className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 text-sm font-medium text-ink-600 underline-offset-4 transition-colors hover:text-ink-900 hover:underline"
+        >
+          <CalendarCheck className="h-4 w-4" />
+          Ver horários já marcados
+        </Link>
       </div>
 
       <h2 className="mb-3 text-base font-semibold text-ink-900">Qual serviço você deseja?</h2>

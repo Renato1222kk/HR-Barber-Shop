@@ -49,3 +49,15 @@ export interface CreateBookingResult {
   client_name: string;
   client_whatsapp: string;
 }
+
+/** Horário ocupado exibido em /horarios — já anonimizado no banco. */
+export interface BookedSlot {
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  displayName: string; // "Leonardo S."
+}
+
+export interface BookedSlotsResult {
+  date: string; // YYYY-MM-DD
+  appointments: BookedSlot[];
+}
